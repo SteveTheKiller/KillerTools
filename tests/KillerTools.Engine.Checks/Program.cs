@@ -5,6 +5,7 @@ using KillerTools.Engine.Documents;
 using KillerTools.Engine.SystemTools;
 using KillerTools.Engine.Photography;
 using KillerTools.Engine.Network;
+using KillerTools.Engine.Reference;
 
 var checks = new (string Name, Action Run)[]
 {
@@ -18,6 +19,8 @@ var checks = new (string Name, Action Run)[]
     ("email records", CheckEmailRecords),
     ("email headers", CheckEmailHeaders),
     ("safe regular expressions", CheckSafeRegex),
+    ("HTTP status lookup", CheckHttpStatusLookup),
+    ("port and protocol lookup", CheckPortProtocolLookup),
     ("portable utilities", CheckPortableUtilities),
 };
 
@@ -25,6 +28,22 @@ foreach (var check in checks)
 {
     check.Run();
     Console.WriteLine($"PASS {check.Name}");
+}
+
+static void CheckPortProtocolLookup()
+{
+    Equal(392, PortProtocolLookup.Count);
+    var result = PortProtocolLookup.Search("HTTPS", 10);
+    Equal("HTTP", result[0].Service);
+    Equal(80, result[0].Port.GetInt32());
+}
+
+static void CheckHttpStatusLookup()
+{
+    Equal(86, HttpStatusLookup.Count);
+    var result = HttpStatusLookup.Search("not found", 10);
+    Equal(404, result[0].Code);
+    Equal("Not Found", result[0].Name);
 }
 
 static void CheckSafeRegex()

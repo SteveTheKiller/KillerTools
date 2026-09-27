@@ -7,6 +7,7 @@ using KillerTools.Engine.Documents;
 using KillerTools.Engine.SystemTools;
 using KillerTools.Engine.Photography;
 using KillerTools.Engine.Network;
+using KillerTools.Engine.Reference;
 
 Console.InputEncoding = Encoding.UTF8;
 Console.OutputEncoding = Encoding.UTF8;
@@ -48,9 +49,26 @@ foreach (var request in input.RootElement.EnumerateArray())
         "generate_dmarc_record" => DmarcResult(arguments),
         "parse_email_headers" => EmailHeadersResult(arguments),
         "test_regex" => RegexResult(arguments),
+        "lookup_http_status" => HttpStatusResult(arguments),
+        "lookup_port_protocol" => PortProtocolResult(arguments),
         _ => throw new InvalidOperationException($"Unknown parity operation: {operation}"),
     });
 }
+
+static object PortProtocolResult(JsonElement arguments) => PortProtocolLookup.Search(arguments.GetProperty("query").GetString()!, arguments.GetProperty("limit").GetInt32())
+    .Select(entry =>
+    {
+        var result = new Dictionary<string, object>
+        {
+            ["category"] = entry.Category, ["port"] = entry.Port, ["protocol"] = entry.Protocol,
+            ["service"] = entry.Service, ["description"] = entry.Description, ["dangerous"] = entry.Dangerous,
+        };
+        if (entry.Notes is not null) result["notes"] = entry.Notes;
+        return result;
+    });
+
+static object HttpStatusResult(JsonElement arguments) => HttpStatusLookup.Search(arguments.GetProperty("query").GetString()!, arguments.GetProperty("limit").GetInt32())
+    .Select(entry => new { category = entry.Category, code = entry.Code, name = entry.Name, description = entry.Description, type = entry.Type });
 
 static object RegexResult(JsonElement arguments)
 {

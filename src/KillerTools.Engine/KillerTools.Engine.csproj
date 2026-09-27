@@ -2,5 +2,7 @@
   <PropertyGroup>
     <Description>Cross-platform utility engine shared by KillerTools and KillerMCP.</Description>
   </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Data\*" />
+  </ItemGroup>
 </Project>
-
