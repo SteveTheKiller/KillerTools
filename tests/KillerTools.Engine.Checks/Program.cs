@@ -25,6 +25,8 @@ static void CheckTextConversions()
     Equal("MCMXCIX", RomanNumerals.FromArabic(1999));
     Equal(1999, RomanNumerals.ToArabic("MCMXCIX"));
     Equal("Sierra Oscar Sierra", NatoAlphabet.Convert("SOS"));
+    Equal("ff", IntegerBases.Convert("255", 10, 16));
+    Equal("100000000000000000000000000000000", IntegerBases.Convert("100000000", 16, 2));
 }
 
 static void CheckTextStatistics()

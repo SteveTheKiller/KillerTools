@@ -15,6 +15,7 @@ const base64 = await import(pathToFileURL(resolve(site, 'src/utils/base64.ts')))
 const binary = await import(pathToFileURL(resolve(site, 'src/tools/text-to-binary/text-to-binary.models.ts')));
 const roman = await import(pathToFileURL(resolve(site, 'src/tools/roman-numeral-converter/roman-numeral-converter.service.ts')));
 const nato = await import(pathToFileURL(resolve(site, 'src/tools/text-to-nato-alphabet/text-to-nato-alphabet.service.ts')));
+const integerBase = await import(pathToFileURL(resolve(site, 'src/tools/integer-base-converter/integer-base-converter.model.ts')));
 
 const requests = [
   { operation: 'text_statistics', arguments: { text: '' } },
@@ -34,6 +35,8 @@ const requests = [
   { operation: 'arabic_to_roman', arguments: { number: 1999 } },
   { operation: 'roman_to_arabic', arguments: { roman: 'MCMXCIX' } },
   { operation: 'text_to_nato_alphabet', arguments: { text: 'SOS 2' } },
+  { operation: 'convert_integer_base', arguments: { value: '255', fromBase: 10, toBase: 16 } },
+  { operation: 'convert_integer_base', arguments: { value: '100000000', fromBase: 16, toBase: 2 } },
 ];
 
 const expected = requests.map(({ operation, arguments: input }) => {
@@ -47,6 +50,7 @@ const expected = requests.map(({ operation, arguments: input }) => {
   if (operation === 'arabic_to_roman') return { roman: roman.arabicToRoman(input.number) };
   if (operation === 'roman_to_arabic') return { number: roman.romanToArabic(input.roman) };
   if (operation === 'text_to_nato_alphabet') return { nato: nato.textToNatoAlphabet({ text: input.text }).split(' ').filter(Boolean).join(' ') };
+  if (operation === 'convert_integer_base') return { value: integerBase.convertBase(input) };
   const value = input.mode === 'percent_of'
     ? percentages.percentageOf(input.x, input.y)
     : input.mode === 'what_percent'
@@ -67,4 +71,4 @@ if (run.status !== 0) {
 }
 
 assert.deepEqual(JSON.parse(run.stdout), expected);
-console.log(`${requests.length} live JavaScript parity cases passed for 9 native operations.`);
+console.log(`${requests.length} live JavaScript parity cases passed for 10 native operations.`);
