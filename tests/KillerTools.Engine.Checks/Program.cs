@@ -24,6 +24,7 @@ var checks = new (string Name, Action Run)[]
     ("DNS lookup", CheckDnsLookup),
     ("RDAP lookup", CheckRdapLookup),
     ("URL and CSV conversions", CheckUrlAndCsv),
+    ("user agent parsing", CheckUserAgentParsing),
     ("JSON5 formatting and diff", CheckStructuredJson),
     ("XML and JSON conversion", CheckXmlJson),
     ("YAML and TOML conversion", CheckYamlToml),
@@ -76,6 +77,17 @@ static void CheckDateTimeConversions()
     Equal("0", value.TimestampMs);
     Equal("00000000000000000", value.MongoObjectId);
     Equal("25569", value.Excel);
+}
+
+static void CheckUserAgentParsing()
+{
+    var chrome = UserAgentParser.Parse("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+    Equal("Chrome", chrome.Browser["name"]);
+    Equal("120.0.0.0", chrome.Browser["version"]);
+    Equal("Blink", chrome.Engine["name"]);
+    Equal("Windows", chrome.Os["name"]);
+    Equal("amd64", chrome.Cpu["architecture"]);
+    Equal(0, UserAgentParser.Parse("curl/8.5.0").Browser.Count);
 }
 
 static void CheckCaseConversions()

@@ -62,6 +62,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "describe_cron" => new { description = CronDescriptions.Describe(arguments.GetProperty("expression").GetString()!, arguments.GetProperty("use24HourTimeFormat").GetBoolean(), arguments.GetProperty("dayOfWeekStartIndexZero").GetBoolean()) },
         "json_to_csv" => new { csv = JsonCsv.Convert(arguments.GetProperty("rows")) },
         "parse_url" => UrlResult(arguments),
+        "parse_user_agent" => UserAgentParser.Parse(arguments.GetProperty("userAgent").GetString()!),
         "lookup_domain_dns" => DnsResult(arguments),
         "lookup_domain_rdap" => RdapResult(arguments),
         "generate_spf_record" => SpfResult(arguments),

@@ -73,6 +73,7 @@
   "convert_integer_base": "verified",
   "roman_to_arabic": "verified",
   "parse_url": "verified",
+  "parse_user_agent": "verified",
   "otp_private": "verified",
   "parse_email_headers": "verified",
   "parse_jwt_private": "verified",

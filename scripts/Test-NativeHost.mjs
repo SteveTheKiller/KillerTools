@@ -79,7 +79,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'describe_cron', 'calculate_nd_exposure', 'calculate_exposure_equivalence',
   'calculate_depth_of_field', 'generate_svg_placeholder', 'calculate_chmod',
   'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv',
-  'parse_url', 'lookup_domain_dns', 'lookup_domain_rdap', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers',
+  'parse_url', 'parse_user_agent', 'lookup_domain_dns', 'lookup_domain_rdap', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers',
   'test_regex',
   'encode_file_base64_local', 'decode_file_base64_local',
   'otp_private', 'generate_otp_secret_private',
@@ -135,6 +135,9 @@ const formattedJson = await request('tools/call', { name: 'format_json', argumen
 assert.equal(JSON.parse(formattedJson.content[0].text).text, '{\n   "a": 1,\n   "b": 2\n}');
 const invalidJson = await request('tools/call', { name: 'minify_json', arguments: { text: '{broken:' } });
 assert.equal(invalidJson.isError, true);
+const parsedUserAgent = JSON.parse((await request('tools/call', { name: 'parse_user_agent', arguments: { userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } })).content[0].text);
+assert.equal(parsedUserAgent.browser.name, 'Chrome');
+assert.equal(parsedUserAgent.engine.name, 'Blink');
 const xmlJson = await request('tools/call', { name: 'convert_xml_json', arguments: { text: '<a x="1"/>', direction: 'xml_to_json' } });
 assert.match(JSON.parse(xmlJson.content[0].text).text, /"_attributes"/);
 const formattedXml = await request('tools/call', { name: 'format_xml', arguments: { text: '<a><b>text</b></a>' } });
