@@ -28,6 +28,7 @@ var checks = new (string Name, Action Run)[]
     ("user agent parsing", CheckUserAgentParsing),
     ("phone number parsing", CheckPhoneNumberParsing),
     ("color conversion", CheckColorConversion),
+    ("MAC vendor lookup", CheckMacVendorLookup),
     ("QR code generation", CheckQrCodes),
     ("JSON5 formatting and diff", CheckStructuredJson),
     ("XML and JSON conversion", CheckXmlJson),
@@ -120,6 +121,15 @@ static void CheckColorConversion()
     Equal("rebeccapurple", ColorConverter.Convert("rebeccapurple").Name);
     Equal("#ff0000", ColorConverter.Convert("device-cmyk(0% 100% 100% 0%)").Hex);
     Throws<FormatException>(() => ColorConverter.Convert("not-a-color"));
+}
+
+static void CheckMacVendorLookup()
+{
+    var cisco = MacVendorLookup.Lookup("00:00:0c:12:34:56");
+    Equal("00000C", cisco.Prefix);
+    Equal(true, cisco.Details?.StartsWith("Cisco Systems, Inc", StringComparison.Ordinal));
+    Equal(null, MacVendorLookup.Lookup("02:00:00:00:00:00").Details);
+    Throws<FormatException>(() => MacVendorLookup.Lookup("00:00:0"));
 }
 
 static void CheckQrCodes()

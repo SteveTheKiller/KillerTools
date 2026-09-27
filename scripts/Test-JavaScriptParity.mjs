@@ -110,6 +110,8 @@ const requests = [
   { operation: 'convert_color', arguments: { color: 'lch(53.24% 104.55 40.85)' } },
   { operation: 'convert_color', arguments: { color: 'device-cmyk(0% 100% 100% 0%)' } },
   { operation: 'convert_color', arguments: { color: 'rebeccapurple' } },
+  { operation: 'lookup_mac_vendor', arguments: { macAddress: '00:00:0c:12:34:56' } },
+  { operation: 'lookup_mac_vendor', arguments: { macAddress: '02-00-00-00-00-00' } },
   { operation: 'markdown_to_html', arguments: { markdown: '# Hello\n\n- one\n- two with **bold**' } },
   { operation: 'markdown_to_html', arguments: { markdown: '[link](https://example.com)\n\n> quoted `code`' } },
   { operation: 'markdown_to_html', arguments: { markdown: '```csharp\nConsole.WriteLine("hi");\n```' } },
@@ -175,6 +177,7 @@ const requests = [
 const oracleOperations = new Set(['convert_date_time', 'calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'markdown_to_html', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'format_json', 'minify_json', 'diff_json', 'convert_xml_json', 'format_xml', 'convert_json', 'convert_yaml', 'convert_toml', 'format_yaml', 'generate_meta_tags', 'search_gifs', 'describe_cron', 'json_to_csv', 'parse_url', 'parse_user_agent', 'parse_phone_number', 'generate_qr_code', 'lookup_domain_dns', 'lookup_domain_rdap', 'lookup_cve', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers', 'test_regex', 'lookup_http_status', 'lookup_port_protocol', 'lookup_exchange_ndr', 'lookup_m365_sku', 'lookup_windows_error', 'lookup_windows_event', 'lookup_group_policy', 'list_killer_modules', 'list_killer_scripts', 'search_powershell_cmdlets', 'get_powershell_cmdlet', 'build_powershell_command', 'encode_file_base64_local', 'otp_private', 'generate_uuids', 'generate_lorem_ipsum', 'parse_jwt_private', 'hash_text_private', 'hmac_private', 'bcrypt_private', 'generate_password_private', 'bip39_private', 'analyze_password_private', 'evaluate_math', 'list_film_stocks', 'calculate_reciprocity', 'list_film_development_options', 'calculate_film_development']);
 const oracle = spawn(process.execPath, [resolve(site, 'mcp/dist/killermcp.mjs')], { cwd: resolve(site, 'mcp'), stdio: ['pipe', 'pipe', 'pipe'] });
 oracleOperations.add('convert_color');
+oracleOperations.add('lookup_mac_vendor');
 let oracleBuffer = '';
 let oracleError = '';
 let nextId = 1;

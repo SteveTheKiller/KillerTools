@@ -79,7 +79,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'describe_cron', 'calculate_nd_exposure', 'calculate_exposure_equivalence',
   'calculate_depth_of_field', 'generate_svg_placeholder', 'generate_qr_code', 'calculate_chmod',
   'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv',
-  'parse_url', 'parse_user_agent', 'parse_phone_number', 'convert_color', 'lookup_domain_dns', 'lookup_domain_rdap', 'lookup_cve', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers',
+  'parse_url', 'parse_user_agent', 'parse_phone_number', 'convert_color', 'lookup_mac_vendor', 'lookup_domain_dns', 'lookup_domain_rdap', 'lookup_cve', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers',
   'test_regex',
   'encode_file_base64_local', 'decode_file_base64_local',
   'otp_private', 'generate_otp_secret_private',
@@ -143,6 +143,9 @@ assert.equal(parsedPhone.countryCode, 'US');
 assert.equal(parsedPhone.e164, '+14155552671');
 const convertedColor = JSON.parse((await request('tools/call', { name: 'convert_color', arguments: { color: '#1ea54c' } })).content[0].text);
 assert.equal(convertedColor.rgb, 'rgb(30, 165, 76)');
+const macVendor = JSON.parse((await request('tools/call', { name: 'lookup_mac_vendor', arguments: { macAddress: '00:00:0c:12:34:56' } })).content[0].text);
+assert.equal(macVendor.prefix, '00000C');
+assert.match(macVendor.details, /^Cisco Systems, Inc/);
 const qrCode = JSON.parse((await request('tools/call', { name: 'generate_qr_code', arguments: { mode: 'text', text: 'https://killertools.net' } })).content[0].text);
 assert.match(qrCode.svg, /^<svg/);
 assert.match(qrCode.svg, /width="256"/);

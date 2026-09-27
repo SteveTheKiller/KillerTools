@@ -137,6 +137,7 @@ static class ToolRegistry
         Tool("parse_user_agent", "Parse a user agent string using KillerTools.", new { userAgent = new { type = "string", minLength = 1, maxLength = 1024 } }, ["userAgent"]),
         Tool("parse_phone_number", "Parse, validate, and format a phone number using KillerTools.", new { phone = new { type = "string", minLength = 1, maxLength = 64, pattern = "^[0-9 +\\-()]+$" }, defaultCountry = new { type = "string", minLength = 2, maxLength = 2 } }, ["phone"]),
         Tool("convert_color", "Convert a color into the formats shown by KillerTools Color Converter.", new { color = new { type = "string", minLength = 1, maxLength = 128 } }, ["color"]),
+        Tool("lookup_mac_vendor", "Look up a MAC address prefix in the local KillerTools OUI catalog.", new { macAddress = new { type = "string", minLength = 6, maxLength = 24, pattern = "^[0-9a-fA-F.:-]+$" } }, ["macAddress"]),
         Tool("lookup_domain_dns", "Query DNS records through Cloudflare DNS, as used by KillerTools Domain Lookup.", new { name = new { type = "string", minLength = 4, maxLength = 253 }, type = EnumSchema("A", "AAAA", "MX", "TXT", "CNAME", "NS", "CAA", "SRV") }, ["name"]),
         Tool("lookup_domain_rdap", "Look up public domain registration details through RDAP, as used by KillerTools Domain Lookup.", new { domain = new { type = "string", minLength = 4, maxLength = 253 } }, ["domain"]),
         Tool("lookup_cve", "Look up a CVE ID or search terms through the same NVD proxy used by KillerTools. Returns bounded vulnerability summaries and named multi-CVE exploit chains.", new { query = new { type = "string", minLength = 2, maxLength = 80 } }, ["query"]),
@@ -253,6 +254,7 @@ static class ToolRegistry
             "parse_user_agent" => UserAgentParser.Parse(arguments.GetProperty("userAgent").GetString()!),
             "parse_phone_number" => PhoneNumber(arguments),
             "convert_color" => Color(arguments),
+            "lookup_mac_vendor" => MacVendor(arguments),
             "lookup_domain_dns" => DnsLookup(arguments),
             "lookup_domain_rdap" => RdapLookup(arguments),
             "lookup_cve" => Cve(arguments),
@@ -648,6 +650,14 @@ static class ToolRegistry
     {
         try { return ColorConverter.Convert(arguments.GetProperty("color").GetString()!); }
         catch { throw new ToolCallException("Invalid color"); }
+    }
+    private static object MacVendor(JsonElement arguments)
+    {
+        try { return MacVendorLookup.Lookup(arguments.GetProperty("macAddress").GetString()!); }
+        catch (Exception exception) when (exception is FormatException or ArgumentException)
+        {
+            throw new ToolCallException("Invalid MAC address");
+        }
     }
     private static object KillerScripts(JsonElement arguments)
     {

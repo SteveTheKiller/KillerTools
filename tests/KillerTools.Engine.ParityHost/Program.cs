@@ -66,6 +66,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "parse_user_agent" => UserAgentParser.Parse(arguments.GetProperty("userAgent").GetString()!),
         "parse_phone_number" => PhoneNumberParser.Parse(arguments.GetProperty("phone").GetString()!, arguments.TryGetProperty("defaultCountry", out var country) ? country.GetString() : null),
         "convert_color" => ColorConverter.Convert(arguments.GetProperty("color").GetString()!),
+        "lookup_mac_vendor" => MacVendorResult(arguments),
         "lookup_domain_dns" => DnsResult(arguments),
         "lookup_domain_rdap" => RdapResult(arguments),
         "lookup_cve" => CveLookup.LookupAsync(arguments.GetProperty("query").GetString()!).GetAwaiter().GetResult(),
@@ -110,6 +111,12 @@ static object DateTimeResult(JsonElement arguments)
 {
     var value = DateTimeConverter.Convert(arguments.GetProperty("value").GetString()!, arguments.GetProperty("inputFormat").GetString()!);
     return new { iso8601 = value.Iso8601, iso9075 = value.Iso9075, rfc3339 = value.Rfc3339, rfc7231 = value.Rfc7231, unixSeconds = value.UnixSeconds, timestampMs = value.TimestampMs, utc = value.Utc, mongoObjectId = value.MongoObjectId, excel = value.Excel };
+}
+
+static object MacVendorResult(JsonElement arguments)
+{
+    var value = MacVendorLookup.Lookup(arguments.GetProperty("macAddress").GetString()!);
+    return new { prefix = value.Prefix, details = value.Details };
 }
 
 static object PowerShellBuildResult(JsonElement arguments)

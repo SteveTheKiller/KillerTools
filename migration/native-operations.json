@@ -50,6 +50,7 @@
   "lookup_http_status": "verified",
   "lookup_group_policy": "verified",
   "lookup_exchange_ndr": "verified",
+  "lookup_mac_vendor": "verified",
   "lookup_domain_dns": "verified",
   "lookup_domain_rdap": "verified",
   "lookup_cve": "verified",
