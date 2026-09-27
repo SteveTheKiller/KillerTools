@@ -84,7 +84,11 @@ namespace KillerMCP.Setup
             bool movedPrevious = false;
             try
             {
-                if (Directory.Exists(destination)) ValidateInstalled(destination, allowLegacy: true);
+                if (Directory.Exists(destination))
+                {
+                    ValidateInstalled(destination, allowLegacy: true);
+                    CloseRunningProcesses(destination);
+                }
                 ExtractAndVerify(staging);
                 if (Directory.Exists(destination)) { Directory.Move(destination, backup); movedPrevious = true; }
                 try { Directory.Move(staging, destination); }
@@ -152,6 +156,32 @@ namespace KillerMCP.Setup
                 string error = process.StandardError.ReadToEnd();
                 if (!process.WaitForExit(60000)) { process.Kill(); throw new TimeoutException("KillerMCP client configuration timed out."); }
                 if (process.ExitCode != 0) throw new InvalidOperationException(string.IsNullOrWhiteSpace(error) ? output.Trim() : error.Trim());
+            }
+        }
+
+        private static void CloseRunningProcesses(string destination)
+        {
+            string root = Path.GetFullPath(destination).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            int currentProcessId = Process.GetCurrentProcess().Id;
+            foreach (Process process in Process.GetProcesses())
+            {
+                using (process)
+                {
+                    if (process.Id == currentProcessId) continue;
+                    string? executable;
+                    try { executable = process.MainModule?.FileName; }
+                    catch { continue; }
+                    if (string.IsNullOrWhiteSpace(executable) || !Path.GetFullPath(executable).StartsWith(root, StringComparison.OrdinalIgnoreCase)) continue;
+                    try
+                    {
+                        process.Kill();
+                        if (!process.WaitForExit(10000)) throw new TimeoutException();
+                    }
+                    catch (Exception exception)
+                    {
+                        throw new InvalidOperationException("KillerMCP could not close its running host. Close connected agent clients and try again.", exception);
+                    }
+                }
             }
         }
 

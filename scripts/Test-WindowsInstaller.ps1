@@ -80,6 +80,26 @@ try {
         }
     }
 
+    $runningStart = [Diagnostics.ProcessStartInfo]::new((Join-Path $installed 'KillerMCP.exe'))
+    $runningStart.UseShellExecute = $false
+    $runningStart.CreateNoWindow = $true
+    $runningStart.RedirectStandardInput = $true
+    $runningStart.RedirectStandardOutput = $true
+    $runningStart.RedirectStandardError = $true
+    $runningHost = [Diagnostics.Process]::new()
+    $runningHost.StartInfo = $runningStart
+    try {
+        if (-not $runningHost.Start()) { throw 'The installed MCP host did not start for the active-process reinstall test.' }
+        Start-Sleep -Milliseconds 500
+        if ($runningHost.HasExited) { throw 'The installed MCP host exited before the active-process reinstall test.' }
+        $reinstall = Start-Process -FilePath $setup -ArgumentList '/silent' -Wait -PassThru -WindowStyle Hidden
+        if ($reinstall.ExitCode -ne 0 -or -not $runningHost.HasExited) { throw 'Reinstall did not close and replace the active MCP host.' }
+    }
+    finally {
+        if (-not $runningHost.HasExited) { $runningHost.Kill() }
+        $runningHost.Dispose()
+    }
+
     $entry = Get-ItemProperty -LiteralPath $uninstallKey
     if (-not (Test-Path -LiteralPath $setupCopy -PathType Leaf) -or $entry.DisplayVersion -ne '0.2.0' -or $entry.InstallLocation -ne $installed) { throw 'Installed Apps registration is incorrect.' }
     $codex = Get-Content -LiteralPath $codexState -Raw | ConvertFrom-Json
