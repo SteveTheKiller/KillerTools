@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace KillerMCP.Setup
 {
@@ -20,6 +21,10 @@ namespace KillerMCP.Setup
             InitializeComponent();
             VersionLabel.Text = "SETUP " + Program.CurrentVersion;
             InstallLocation.Text = destination;
+            ImageBrush grain = CreateGrain();
+            GrainLayer.Background = grain;
+            SidebarGrain.Background = grain;
+            FrameGrain.Background = grain;
             SetRuntimeStatus();
         }
 
@@ -69,5 +74,27 @@ namespace KillerMCP.Setup
         private void RuntimeLink_Click(object sender, MouseButtonEventArgs e) => Process.Start(new ProcessStartInfo("https://dotnet.microsoft.com/en-us/download/dotnet/10.0") { UseShellExecute = true });
         private void Cancel_Click(object sender, RoutedEventArgs e) => DialogResult = false;
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) { if (e.LeftButton == MouseButtonState.Pressed) DragMove(); }
+
+        private static ImageBrush CreateGrain()
+        {
+            const int size = 128;
+            var pixels = new byte[size * size * 4];
+            var random = new Random(1979);
+            for (int i = 0; i < pixels.Length; i += 4)
+            {
+                byte value = (byte)random.Next(82, 174);
+                pixels[i] = pixels[i + 1] = pixels[i + 2] = value;
+                pixels[i + 3] = (byte)random.Next(34, 92);
+            }
+            var bitmap = BitmapSource.Create(size, size, 96, 96, PixelFormats.Bgra32, null, pixels, size * 4);
+            bitmap.Freeze();
+            return new ImageBrush(bitmap)
+            {
+                TileMode = TileMode.Tile,
+                ViewportUnits = BrushMappingMode.Absolute,
+                Viewport = new Rect(0, 0, size, size),
+                Stretch = Stretch.None
+            };
+        }
     }
 }

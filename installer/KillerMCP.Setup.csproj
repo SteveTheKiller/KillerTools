@@ -22,6 +22,10 @@
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
     <EmbeddedResource Include="$(PayloadZip)" LogicalName="KillerMCP.payload.zip" Condition="'$(PayloadZip)' != ''" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\mcp.png" />
+    <Resource Include="Assets\Typewriter-A602.ttf" />
+  </ItemGroup>
   <Target Name="RequirePayload" BeforeTargets="CoreCompile">
     <Error Condition="'$(PayloadZip)' == '' or !Exists('$(PayloadZip)')" Text="Build the verified native payload before compiling the installer." />
   </Target>
