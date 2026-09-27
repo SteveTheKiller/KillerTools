@@ -22,6 +22,7 @@ var checks = new (string Name, Action Run)[]
     ("HTTP status lookup", CheckHttpStatusLookup),
     ("port and protocol lookup", CheckPortProtocolLookup),
     ("Microsoft reference lookups", CheckMicrosoftReferenceLookups),
+    ("reference translations", CheckReferenceTranslations),
     ("portable utilities", CheckPortableUtilities),
 };
 
@@ -29,6 +30,15 @@ foreach (var check in checks)
 {
     check.Run();
     Console.WriteLine($"PASS {check.Name}");
+}
+
+static void CheckReferenceTranslations()
+{
+    Equal(18, ReferenceTranslations.SupportedLocales.Count);
+    Equal("Non trouvé", ReferenceTranslations.Translate("http-status-codes", "fr", "Not Found"));
+    Equal("Xác thực SPF không thành công", ReferenceTranslations.Translate("exchange-ndr-lookup", "vi", "SPF Validation Failed"));
+    Equal("Failed Logon", ReferenceTranslations.Translate("windows-event-lookup", "en", "Failed Logon"));
+    Equal("Not Found", ReferenceTranslations.Translate("http-status-codes", "unknown", "Not Found"));
 }
 
 static void CheckMicrosoftReferenceLookups()
