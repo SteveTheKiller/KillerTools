@@ -23,6 +23,9 @@ try {
     dotnet run --project tests\KillerTools.Engine.Checks\KillerTools.Engine.Checks.csproj --no-build
     if ($LASTEXITCODE -ne 0) { throw 'Native engine checks failed.' }
 
+    node scripts\Test-NativeHost.mjs
+    if ($LASTEXITCODE -ne 0) { throw 'Native KillerMCP host check failed.' }
+
     Push-Location $site
     try {
         pnpm -C mcp build:local

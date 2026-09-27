@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>KillerMCP</AssemblyName>
+    <RootNamespace>KillerMCP</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\KillerTools.Engine\KillerTools.Engine.csproj" />
+  </ItemGroup>
+</Project>

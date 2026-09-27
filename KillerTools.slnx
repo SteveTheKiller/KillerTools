@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="src/KillerTools.Engine/KillerTools.Engine.csproj" />
+  <Project Path="src/KillerMCP/KillerMCP.csproj" />
   <Project Path="tests/KillerTools.Engine.Checks/KillerTools.Engine.Checks.csproj" />
   <Project Path="tests/KillerTools.Engine.ParityHost/KillerTools.Engine.ParityHost.csproj" />
 </Solution>
