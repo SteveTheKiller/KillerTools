@@ -102,6 +102,8 @@ static class ToolRegistry
         Tool("format_json", "Prettify JSON5-compatible text with optional key sorting.", new { text = StructuredTextSchema(), indentSize = new { type = "integer", minimum = 0, maximum = 10, @default = 3 }, sortKeys = BooleanSchema(true) }, ["text"]),
         Tool("minify_json", "Minify JSON5-compatible text.", new { text = StructuredTextSchema() }, ["text"]),
         Tool("diff_json", "Compare two JSON5-compatible documents.", new { left = StructuredTextSchema(), right = StructuredTextSchema(), onlyDifferences = BooleanSchema(true) }, ["left", "right"]),
+        Tool("convert_xml_json", "Convert XML to JSON or JSON5-compatible text to XML using KillerTools.", new { text = StructuredTextSchema(), direction = EnumSchema("xml_to_json", "json_to_xml") }, ["text", "direction"]),
+        Tool("format_xml", "Format XML using KillerTools XML Formatter.", new { text = StructuredTextSchema(), indentSize = new { type = "integer", minimum = 0, maximum = 10, @default = 2 }, collapseContent = BooleanSchema(true) }, ["text"]),
         Tool("calculate_nd_exposure", "Calculate exposure time with a neutral density filter.", new { baseSeconds = NumberSchema(), stops = NumberSchema() }, ["baseSeconds", "stops"]),
         Tool("calculate_exposure_equivalence", "Calculate equivalent shutter speed after an aperture change.", new { shutterSeconds = NumberSchema(), originalAperture = NumberSchema(), targetAperture = NumberSchema() }, ["shutterSeconds", "originalAperture", "targetAperture"]),
         Tool("calculate_depth_of_field", "Calculate depth of field.", new { focalLengthMm = NumberSchema(), aperture = NumberSchema(), focusDistance = NumberSchema(), focusUnit = EnumSchema("m", "ft"), circleOfConfusionMm = NumberSchema() }, ["focalLengthMm", "aperture", "focusDistance", "focusUnit", "circleOfConfusionMm"]),
@@ -187,6 +189,8 @@ static class ToolRegistry
             "format_json" => JsonFormat(arguments),
             "minify_json" => JsonMinify(arguments),
             "diff_json" => JsonDifference(arguments),
+            "convert_xml_json" => XmlJson(arguments),
+            "format_xml" => XmlFormat(arguments),
             "calculate_nd_exposure" => new { seconds = ExposureCalculators.WithNeutralDensity(arguments.GetProperty("baseSeconds").GetDouble(), arguments.GetProperty("stops").GetDouble()) },
             "calculate_exposure_equivalence" => new { shutterSeconds = ExposureCalculators.EquivalentShutter(arguments.GetProperty("shutterSeconds").GetDouble(), arguments.GetProperty("originalAperture").GetDouble(), arguments.GetProperty("targetAperture").GetDouble()) },
             "calculate_depth_of_field" => ExposureCalculators.DepthOfField(arguments.GetProperty("focalLengthMm").GetDouble(), arguments.GetProperty("aperture").GetDouble(), arguments.GetProperty("focusDistance").GetDouble(), arguments.GetProperty("focusUnit").GetString()!, arguments.GetProperty("circleOfConfusionMm").GetDouble()),
@@ -332,6 +336,29 @@ static class ToolRegistry
         }
         catch (ToolCallException) { throw; }
         catch (Exception exception) when (exception is FormatException or ArgumentException)
+        {
+            throw new ToolCallException("Invalid document input");
+        }
+    }
+    private static object XmlJson(JsonElement arguments)
+    {
+        try
+        {
+            var text = arguments.GetProperty("text").GetString()!;
+            return new { text = arguments.GetProperty("direction").GetString() == "xml_to_json" ? XmlJsonConverter.XmlToJson(text) : XmlJsonConverter.JsonToXml(text) };
+        }
+        catch (Exception exception) when (exception is FormatException or System.Xml.XmlException or InvalidOperationException)
+        {
+            throw new ToolCallException("Invalid document input");
+        }
+    }
+    private static object XmlFormat(JsonElement arguments)
+    {
+        try
+        {
+            return new { text = XmlFormatter.Format(arguments.GetProperty("text").GetString()!, OptionalInteger(arguments, "indentSize", 2), OptionalBoolean(arguments, "collapseContent", true)) };
+        }
+        catch (Exception exception) when (exception is System.Xml.XmlException or ArgumentOutOfRangeException)
         {
             throw new ToolCallException("Invalid document input");
         }

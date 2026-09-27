@@ -49,6 +49,8 @@ foreach (var request in input.RootElement.EnumerateArray())
         "format_json" => new { text = StructuredJson.Format(arguments.GetProperty("text").GetString()!, arguments.GetProperty("indentSize").GetInt32(), arguments.GetProperty("sortKeys").GetBoolean()) },
         "minify_json" => new { text = StructuredJson.Minify(arguments.GetProperty("text").GetString()!) },
         "diff_json" => StructuredJson.Diff(arguments.GetProperty("left").GetString()!, arguments.GetProperty("right").GetString()!, arguments.GetProperty("onlyDifferences").GetBoolean()),
+        "convert_xml_json" => new { text = arguments.GetProperty("direction").GetString() == "xml_to_json" ? XmlJsonConverter.XmlToJson(arguments.GetProperty("text").GetString()!) : XmlJsonConverter.JsonToXml(arguments.GetProperty("text").GetString()!) },
+        "format_xml" => new { text = XmlFormatter.Format(arguments.GetProperty("text").GetString()!, arguments.GetProperty("indentSize").GetInt32(), arguments.GetProperty("collapseContent").GetBoolean()) },
         "json_to_csv" => new { csv = JsonCsv.Convert(arguments.GetProperty("rows")) },
         "parse_url" => UrlResult(arguments),
         "generate_spf_record" => SpfResult(arguments),

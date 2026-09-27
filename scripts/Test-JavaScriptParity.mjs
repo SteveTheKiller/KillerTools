@@ -72,6 +72,12 @@ const requests = [
   { operation: 'minify_json', arguments: { text: "{ text: 'hello', hex: 0x10, trailing: true, }" } },
   { operation: 'diff_json', arguments: { left: '{ a: 1, same: true }', right: '{ a: 2, same: true }', onlyDifferences: true } },
   { operation: 'diff_json', arguments: { left: '[1, 2]', right: '[1, 3, 4]', onlyDifferences: false } },
+  { operation: 'convert_xml_json', arguments: { text: '<a x="1"/>', direction: 'xml_to_json' } },
+  { operation: 'convert_xml_json', arguments: { text: '<?xml version="1.0"?><root><item id="1">one</item><item>two</item></root>', direction: 'xml_to_json' } },
+  { operation: 'convert_xml_json', arguments: { text: "{root:{item:[{_attributes:{id:'1'},_text:'one'},{_text:'two'}]}}", direction: 'json_to_xml' } },
+  { operation: 'format_xml', arguments: { text: '<a><b>text</b></a>', indentSize: 2, collapseContent: true } },
+  { operation: 'format_xml', arguments: { text: '<a><b>text</b></a>', indentSize: 2, collapseContent: false } },
+  { operation: 'format_xml', arguments: { text: '<?xml version="1.0"?><root><item id="1">one</item><item>two</item></root>', indentSize: 4, collapseContent: true } },
   { operation: 'json_to_csv', arguments: { rows: [{ a: 1, b: 'hello, world' }, { a: 2, c: null }] } },
   { operation: 'json_to_csv', arguments: { rows: [{ text: 'line 1\nline 2', active: true, nested: { a: 1 } }] } },
   { operation: 'parse_url', arguments: { url: 'https://user:pass@example.com:8443/a%20b?x=1&x=two+words#top' } },
@@ -120,7 +126,7 @@ const requests = [
   { operation: 'calculate_film_development', arguments: { filmName: 'Ilford HP5 Plus', developerId: 'd76', dilutionIndex: 1, temperatureC: 24, pushPullStops: 1, tankMl: 501 } },
 ];
 
-const oracleOperations = new Set(['convert_date_time', 'calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'format_json', 'minify_json', 'diff_json', 'json_to_csv', 'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers', 'test_regex', 'lookup_http_status', 'lookup_port_protocol', 'lookup_exchange_ndr', 'lookup_m365_sku', 'lookup_windows_error', 'lookup_windows_event', 'lookup_group_policy', 'list_killer_modules', 'list_killer_scripts', 'encode_file_base64_local', 'otp_private', 'generate_uuids', 'generate_lorem_ipsum', 'parse_jwt_private', 'analyze_password_private', 'evaluate_math', 'list_film_stocks', 'calculate_reciprocity', 'list_film_development_options', 'calculate_film_development']);
+const oracleOperations = new Set(['convert_date_time', 'calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'format_json', 'minify_json', 'diff_json', 'convert_xml_json', 'format_xml', 'json_to_csv', 'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers', 'test_regex', 'lookup_http_status', 'lookup_port_protocol', 'lookup_exchange_ndr', 'lookup_m365_sku', 'lookup_windows_error', 'lookup_windows_event', 'lookup_group_policy', 'list_killer_modules', 'list_killer_scripts', 'encode_file_base64_local', 'otp_private', 'generate_uuids', 'generate_lorem_ipsum', 'parse_jwt_private', 'analyze_password_private', 'evaluate_math', 'list_film_stocks', 'calculate_reciprocity', 'list_film_development_options', 'calculate_film_development']);
 const oracle = spawn(process.execPath, [resolve(site, 'mcp/dist/killermcp.mjs')], { cwd: resolve(site, 'mcp'), stdio: ['pipe', 'pipe', 'pipe'] });
 let oracleBuffer = '';
 let oracleError = '';

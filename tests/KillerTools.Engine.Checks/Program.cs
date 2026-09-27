@@ -21,6 +21,7 @@ var checks = new (string Name, Action Run)[]
     ("IP network calculations", CheckNetworkCalculations),
     ("URL and CSV conversions", CheckUrlAndCsv),
     ("JSON5 formatting and diff", CheckStructuredJson),
+    ("XML and JSON conversion", CheckXmlJson),
     ("email records", CheckEmailRecords),
     ("email headers", CheckEmailHeaders),
     ("safe regular expressions", CheckSafeRegex),
@@ -176,6 +177,15 @@ static void CheckStructuredJson()
     Equal(1, difference.GetProperty("children").GetArrayLength());
     Equal("updated", difference.GetProperty("children")[0].GetProperty("status").GetString());
     Throws<FormatException>(() => StructuredJson.Parse("{ broken:"));
+}
+
+static void CheckXmlJson()
+{
+    Equal("<a>\n  <b>text</b>\n</a>", XmlFormatter.Format("<a><b>text</b></a>"));
+    Equal("<a>\n  <b>\n    text\n  </b>\n</a>", XmlFormatter.Format("<a><b>text</b></a>", 2, false));
+    Equal("{\n  \"a\": {\n    \"_attributes\": {\n      \"x\": \"1\"\n    }\n  }\n}", XmlJsonConverter.XmlToJson("<a x=\"1\"/>"));
+    Equal("<root>\n  <item id=\"1\">one</item>\n  <item>two</item>\n</root>", XmlJsonConverter.JsonToXml("{root:{item:[{_attributes:{id:'1'},_text:'one'},{_text:'two'}]}}"));
+    Throws<System.Xml.XmlException>(() => XmlJsonConverter.XmlToJson("<root><"));
 }
 
 static void CheckNetworkCalculations()
