@@ -67,7 +67,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'text_statistics', 'convert_case', 'encode_base64', 'decode_base64', 'text_to_ascii_binary',
   'ascii_binary_to_text', 'draw_ascii_text', 'search_emoji', 'arabic_to_roman', 'roman_to_arabic', 'text_to_nato_alphabet',
   'convert_integer_base', 'convert_temperature', 'calculate_percentage', 'escape_html_entities',
-  'unescape_html_entities', 'markdown_to_html',
+  'unescape_html_entities', 'markdown_to_html', 'format_sql',
   'convert_date_time', 'lookup_exchange_ndr', 'lookup_group_policy', 'lookup_http_status',
   'lookup_m365_sku', 'lookup_port_protocol', 'lookup_windows_error', 'lookup_windows_event',
   'list_killer_modules', 'list_killer_scripts',
@@ -135,6 +135,8 @@ const exposure = await request('tools/call', { name: 'calculate_nd_exposure', ar
 assert.deepEqual(JSON.parse(exposure.content[0].text), { seconds: 32 });
 const difference = await request('tools/call', { name: 'diff_text', arguments: { left: 'one\ntwo', right: 'one\nnew' } });
 assert.equal(JSON.parse(difference.content[0].text).added, 1);
+const formattedSql = await request('tools/call', { name: 'format_sql', arguments: { sql: 'select a,b from t where x=1' } });
+assert.equal(JSON.parse(formattedSql.content[0].text).text, 'SELECT\n  a,\n  b\nFROM\n  t\nWHERE\n  x = 1');
 const formattedJson = await request('tools/call', { name: 'format_json', arguments: { text: '{b:2,a:1,}' } });
 assert.equal(JSON.parse(formattedJson.content[0].text).text, '{\n   "a": 1,\n   "b": 2\n}');
 const invalidJson = await request('tools/call', { name: 'minify_json', arguments: { text: '{broken:' } });

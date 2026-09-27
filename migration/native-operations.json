@@ -30,6 +30,7 @@
   "escape_html_entities": "verified",
   "expand_ipv4_range": "verified",
   "format_json": "verified",
+  "format_sql": "verified",
   "format_xml": "verified",
   "format_yaml": "verified",
   "calculate_ipv4_subnet": "verified",

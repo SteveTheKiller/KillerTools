@@ -6,6 +6,7 @@
     <EmbeddedResource Include="Data\*" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageReference Include="CronExpressionDescriptor" Version="2.51.0" />
+    <PackageReference Include="Jint" Version="4.16.4" />
     <PackageReference Include="libphonenumber-csharp" Version="9.0.40" />
     <PackageReference Include="Markdig" Version="1.4.0" />
     <PackageReference Include="QRCoder" Version="1.8.0" />

@@ -17,6 +17,7 @@ var checks = new (string Name, Action Run)[]
     ("text conversions", CheckTextConversions),
     ("FIGlet text", CheckAsciiArt),
     ("emoji search", CheckEmojiSearch),
+    ("SQL formatting", CheckSqlFormatting),
     ("case conversions", CheckCaseConversions),
     ("Lorem Ipsum generation", CheckLoremIpsum),
     ("date time conversions", CheckDateTimeConversions),
@@ -97,6 +98,15 @@ static void CheckEmojiSearch()
     Equal(3, EmojiSearch.Search("flag", 3).Count);
     Throws<ArgumentOutOfRangeException>(() => EmojiSearch.Search("", 10));
     Throws<ArgumentOutOfRangeException>(() => EmojiSearch.Search("face", 31));
+}
+
+static void CheckSqlFormatting()
+{
+    Equal("SELECT\n  a,\n  b\nFROM\n  t\nWHERE\n  x = 1", SqlFormatter.Format("select a,b from t where x=1"));
+    Equal("select\n  id,\n  name\nfrom\n  users\nwhere\n  active = true\norder by\n  name", SqlFormatter.Format("select id,name from users where active=true order by name", "postgresql", "lower"));
+    Equal("   select a,\n          b\n     from t\n    where x = 1", SqlFormatter.Format("select a,b from t where x=1", "mysql", "preserve", "tabularRight", true));
+    Throws<ArgumentException>(() => SqlFormatter.Format("select 1", "unknown"));
+    Throws<ArgumentOutOfRangeException>(() => SqlFormatter.Format(new string('x', 4097)));
 }
 
 static void CheckDateTimeConversions()

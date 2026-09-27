@@ -93,6 +93,7 @@ static class ToolRegistry
         Tool("escape_html_entities", "Escape HTML entities.", new { text = StringSchema() }, ["text"]),
         Tool("unescape_html_entities", "Unescape HTML entities.", new { text = StringSchema() }, ["text"]),
         Tool("markdown_to_html", "Convert Markdown to HTML using KillerTools Markdown to HTML.", new { markdown = StringSchema() }, ["markdown"]),
+        Tool("format_sql", "Format SQL with the dialect and style options shown by KillerTools SQL Prettify.", new { sql = StringSchema(), language = new { type = "string", @enum = new[] { "bigquery", "db2", "hive", "mariadb", "mysql", "n1ql", "plsql", "postgresql", "redshift", "spark", "sql", "sqlite", "tsql" }, @default = "sql" }, keywordCase = EnumSchema("upper", "lower", "preserve"), indentStyle = EnumSchema("standard", "tabularLeft", "tabularRight"), useTabs = BooleanSchema(false) }, ["sql"]),
         Tool("convert_date_time", "Convert a date among KillerTools formats.", new { value = StringSchema(), inputFormat = EnumSchema("iso8601", "iso9075", "rfc3339", "rfc7231", "unix_seconds", "timestamp_ms", "utc", "mongo_object_id", "excel") }, ["value", "inputFormat"]),
         LookupTool("lookup_exchange_ndr", "Search the Exchange non-delivery report reference."),
         LookupTool("lookup_group_policy", "Search the Group Policy reference."),
@@ -213,6 +214,7 @@ static class ToolRegistry
             "escape_html_entities" => new { text = HtmlEntities.Escape(arguments.GetProperty("text").GetString()!) },
             "unescape_html_entities" => new { text = HtmlEntities.Unescape(arguments.GetProperty("text").GetString()!) },
             "markdown_to_html" => MarkdownToHtml(arguments),
+            "format_sql" => FormatSql(arguments),
             "convert_date_time" => DateTimeConverter.Convert(arguments.GetProperty("value").GetString()!, arguments.GetProperty("inputFormat").GetString()!),
             "lookup_exchange_ndr" => Localize("exchange-ndr-lookup", MicrosoftReferenceLookups.SearchNdrs(Query(arguments), Limit(arguments)), Locale(arguments)),
             "lookup_group_policy" => Localize("group-policy-reference", GroupPolicyLookup.Search(Query(arguments), Limit(arguments)), Locale(arguments)),
@@ -631,6 +633,23 @@ static class ToolRegistry
         try { return new { text = MarkdownHtml.Convert(arguments.GetProperty("markdown").GetString()!) }; }
         catch (InvalidDataException) { throw new ToolCallException("Output is too large"); }
         catch (Exception) { throw new ToolCallException("Invalid Markdown"); }
+    }
+    private static object FormatSql(JsonElement arguments)
+    {
+        try
+        {
+            return new
+            {
+                text = SqlFormatter.Format(
+                    arguments.GetProperty("sql").GetString()!,
+                    OptionalString(arguments, "language", "sql"),
+                    OptionalString(arguments, "keywordCase", "upper"),
+                    OptionalString(arguments, "indentStyle", "standard"),
+                    OptionalBoolean(arguments, "useTabs"))
+            };
+        }
+        catch (InvalidDataException) { throw new ToolCallException("Output is too large"); }
+        catch (Exception) { throw new ToolCallException("Invalid SQL formatting request"); }
     }
     private static object SearchGifs(JsonElement arguments)
     {
