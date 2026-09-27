@@ -213,9 +213,26 @@ namespace KillerMCP.Setup
             string setup = SetupCopyPath(destination);
             using (RegistryKey? key = Registry.CurrentUser.OpenSubKey(RegistryPath(destination)))
             {
-                if (key == null) { if (File.Exists(setup)) throw new InvalidOperationException("An unregistered KillerMCP setup file already exists."); return; }
+                if (key == null)
+                {
+                    if (File.Exists(setup) && !IsLegacySetup(destination, setup)) throw new InvalidOperationException("An unregistered KillerMCP setup file already exists.");
+                    return;
+                }
                 if (!File.Exists(setup) || !string.Equals(key.GetValue("SetupSha256") as string, Sha256(setup), StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("The installed KillerMCP setup file or uninstall entry has changed.");
             }
+        }
+
+        private static bool IsLegacySetup(string destination, string setup)
+        {
+            try
+            {
+                Manifest manifest = ValidateInstalled(destination, allowLegacy: true);
+                Dictionary<string, ManifestFile> files = manifest.files!;
+                bool legacy = files.ContainsKey("node.exe") && files.ContainsKey("killermcp.mjs") && files.ContainsKey("killertools.mjs");
+                FileVersionInfo information = FileVersionInfo.GetVersionInfo(setup);
+                return legacy && string.Equals(information.ProductName, "KillerMCP-Setup", StringComparison.Ordinal);
+            }
+            catch { return false; }
         }
 
         private static void RemoveInstalledApp(string destination)

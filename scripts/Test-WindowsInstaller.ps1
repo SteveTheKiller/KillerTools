@@ -49,10 +49,6 @@ try {
     $setupCopy = "$installed-Setup.exe"
     Copy-Item -LiteralPath $setup -Destination $setupCopy
     $uninstallKey = 'HKCU:\Software\KillerMCP\InstallerTests\' + (Split-Path $scratch -Leaf)
-    New-Item -Path $uninstallKey -Force | Out-Null
-    New-ItemProperty -Path $uninstallKey -Name DisplayVersion -Value '0.1.0' -PropertyType String -Force | Out-Null
-    New-ItemProperty -Path $uninstallKey -Name InstallLocation -Value $installed -PropertyType String -Force | Out-Null
-    New-ItemProperty -Path $uninstallKey -Name SetupSha256 -Value (Get-FileHash -LiteralPath $setupCopy -Algorithm SHA256).Hash -PropertyType String -Force | Out-Null
     $legacyNode = Join-Path $installed 'node.exe'
     $legacyScript = Join-Path $installed 'killermcp.mjs'
     @{ transport = @{ type = 'stdio'; command = $legacyNode; args = @($legacyScript) } } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $codexState -Encoding utf8NoBOM
