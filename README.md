@@ -11,7 +11,7 @@ The native migration is in progress. Each ported operation must match the existi
 ## Build and check
 
 ```powershell
-dotnet build KillerTools.slnx
-dotnet run --project tests\KillerTools.Engine.Checks\KillerTools.Engine.Checks.csproj
+pwsh -NoProfile -File scripts\Test-All.ps1
 ```
 
+The check builds the solution, runs native checks, imports the current implementations from `killer-tools-site`, and compares their output with the native engine. The migration inventory reads the website's authoritative MCP coverage map and reports native operation coverage without maintaining a second list of website tools.

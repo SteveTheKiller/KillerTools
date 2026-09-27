@@ -1,4 +1,5 @@
 using KillerTools.Engine.Math;
+using KillerTools.Engine.Numbers;
 using KillerTools.Engine.Text;
 
 var checks = new (string Name, Action Run)[]
@@ -6,12 +7,24 @@ var checks = new (string Name, Action Run)[]
     ("text statistics", CheckTextStatistics),
     ("Unicode entities", CheckUnicodeEntities),
     ("percentages", CheckPercentages),
+    ("text conversions", CheckTextConversions),
 };
 
 foreach (var check in checks)
 {
     check.Run();
     Console.WriteLine($"PASS {check.Name}");
+}
+
+static void CheckTextConversions()
+{
+    Equal("aMOp", Base64Text.Encode("hé"));
+    Equal("hé", Base64Text.Decode("aMOp"));
+    Equal("01000001", AsciiBinary.Encode("A"));
+    Equal("A", AsciiBinary.Decode("01000001"));
+    Equal("MCMXCIX", RomanNumerals.FromArabic(1999));
+    Equal(1999, RomanNumerals.ToArabic("MCMXCIX"));
+    Equal("Sierra Oscar Sierra", NatoAlphabet.Convert("SOS"));
 }
 
 static void CheckTextStatistics()
