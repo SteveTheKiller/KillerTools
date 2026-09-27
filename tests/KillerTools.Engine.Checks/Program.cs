@@ -14,6 +14,7 @@ var checks = new (string Name, Action Run)[]
     ("text conversions", CheckTextConversions),
     ("HTML entities and text diff", CheckHtmlAndDiff),
     ("IP network calculations", CheckNetworkCalculations),
+    ("URL and CSV conversions", CheckUrlAndCsv),
     ("portable utilities", CheckPortableUtilities),
 };
 
@@ -21,6 +22,17 @@ foreach (var check in checks)
 {
     check.Run();
     Console.WriteLine($"PASS {check.Name}");
+}
+
+static void CheckUrlAndCsv()
+{
+    using var document = System.Text.Json.JsonDocument.Parse("[{\"a\":1,\"b\":\"hello, world\"},{\"a\":2,\"c\":null}]");
+    Equal("a,b,c\n1,\"hello, world\",\n2,,null", JsonCsv.Convert(document.RootElement));
+    var url = UrlParser.Parse("https://user:pass@example.com:8443/a%20b?x=1&x=two+words#top");
+    Equal("https:", url.Protocol);
+    Equal("example.com", url.Hostname);
+    Equal("8443", url.Port);
+    Equal("two words", url.SearchParams[1][1]);
 }
 
 static void CheckNetworkCalculations()

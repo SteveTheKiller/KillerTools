@@ -42,8 +42,16 @@ foreach (var request in input.RootElement.EnumerateArray())
         "expand_ipv4_range" => Ipv4RangeResult(arguments),
         "calculate_ipv4_subnet" => Ipv4SubnetResult(arguments),
         "generate_ipv6_ula" => Ipv6UlaResult(arguments),
+        "json_to_csv" => new { csv = JsonCsv.Convert(arguments.GetProperty("rows")) },
+        "parse_url" => UrlResult(arguments),
         _ => throw new InvalidOperationException($"Unknown parity operation: {operation}"),
     });
+}
+
+static object UrlResult(JsonElement arguments)
+{
+    var value = UrlParser.Parse(arguments.GetProperty("url").GetString()!);
+    return new { protocol = value.Protocol, hostname = value.Hostname, port = value.Port, username = value.Username, password = value.Password, pathname = value.Pathname, search = value.Search, hash = value.Hash, searchParams = value.SearchParams };
 }
 
 static object Ipv4RangeResult(JsonElement arguments)

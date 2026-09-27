@@ -57,9 +57,13 @@ const requests = [
   { operation: 'calculate_ipv4_subnet', arguments: { address: '198.51.100.27/24' } },
   { operation: 'calculate_ipv4_subnet', arguments: { address: '203.0.113.4/31' } },
   { operation: 'generate_ipv6_ula', arguments: { macAddress: '00:11:22:33:44:55', timestampMs: 1700000000000 } },
+  { operation: 'json_to_csv', arguments: { rows: [{ a: 1, b: 'hello, world' }, { a: 2, c: null }] } },
+  { operation: 'json_to_csv', arguments: { rows: [{ text: 'line 1\nline 2', active: true, nested: { a: 1 } }] } },
+  { operation: 'parse_url', arguments: { url: 'https://user:pass@example.com:8443/a%20b?x=1&x=two+words#top' } },
+  { operation: 'parse_url', arguments: { url: 'http://example.com/' } },
 ];
 
-const oracleOperations = new Set(['calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula']);
+const oracleOperations = new Set(['calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv', 'parse_url']);
 const oracle = spawn(process.execPath, [resolve(site, 'mcp/dist/killermcp.mjs')], { cwd: resolve(site, 'mcp'), stdio: ['pipe', 'pipe', 'pipe'] });
 let oracleBuffer = '';
 let oracleError = '';
@@ -152,4 +156,4 @@ if (run.status !== 0) {
 }
 
 assert.deepEqual(JSON.parse(run.stdout), expected);
-console.log(`${requests.length} live JavaScript parity cases passed for 22 native operations.`);
+console.log(`${requests.length} live JavaScript parity cases passed for 24 native operations.`);
