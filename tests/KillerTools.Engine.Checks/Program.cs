@@ -53,6 +53,7 @@ var checks = new (string Name, Action Run)[]
     ("JWT decoding", CheckJwt),
     ("RSA key generation", CheckRsa),
     ("private text hashes", CheckTextHashes),
+    ("CryptoJS text encryption", CheckCryptoJsText),
     ("bcrypt", CheckBcrypt),
     ("password strength", CheckPasswordStrength),
     ("password generation", CheckPasswordGeneration),
@@ -434,6 +435,23 @@ static void CheckTextHashes()
     Equal("18587dc2ea106b9a1563e32b3312421ca164c7f1f07bc922a9c83d77cea3a1e5d0c69910739025372dc14ac9642629379540c17e2a65b19d77aa511a9d00bb96", TextHashes.Hash("abc", "SHA3"));
     Equal("9c196e32dc0175f86f4b1cb89289d6619de6bee699e4c378e68309ed97a1a6ab", TextHashes.Hmac("abc", "key", "SHA256"));
     Equal("ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0", TextHashes.Hash("abc", "SHA256", "Base64url"));
+}
+
+static void CheckCryptoJsText()
+{
+    var vectors = new Dictionary<string, string>
+    {
+        ["AES"] = "U2FsdGVkX18d4wIIuTkHw/1yGxTmuPls/WkrkG1+dpA=",
+        ["TripleDES"] = "U2FsdGVkX1/lW75QiWf2fn5DMExkn3XhTGzHyHbKIpo=",
+        ["Rabbit"] = "U2FsdGVkX188DHu+QI2qI5bnjxYsRt4F",
+        ["RC4"] = "U2FsdGVkX1/WxAb6+S0hDtDfUGbKgCY6",
+    };
+    foreach (var vector in vectors)
+    {
+        Equal("hello π", CryptoJsText.Decrypt(vector.Value, "secret", vector.Key));
+        string encrypted = CryptoJsText.Encrypt("round trip π", "secret", vector.Key);
+        Equal("round trip π", CryptoJsText.Decrypt(encrypted, "secret", vector.Key));
+    }
 }
 
 static void CheckBcrypt()

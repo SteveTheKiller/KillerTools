@@ -157,6 +157,10 @@ const requests = [
   { operation: 'generate_uuids', arguments: { version: 'v5', count: 1, name: 'example.com', namespace: '6ba7b810-9dad-11d1-80b4-00c04fd430c8' } },
   { operation: 'generate_lorem_ipsum', arguments: { paragraphCount: 1, sentencePerParagraph: 1, wordCount: 4, startWithLoremIpsum: true, asHTML: false } },
   { operation: 'parse_jwt_private', arguments: { token: 'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJsb2NhbCIsInJvbGVzIjpbImFkbWluIl19.x' } },
+  { operation: 'crypt_text_private', arguments: { value: 'U2FsdGVkX18d4wIIuTkHw/1yGxTmuPls/WkrkG1+dpA=', secret: 'secret', algorithm: 'AES', action: 'decrypt' } },
+  { operation: 'crypt_text_private', arguments: { value: 'U2FsdGVkX1/lW75QiWf2fn5DMExkn3XhTGzHyHbKIpo=', secret: 'secret', algorithm: 'TripleDES', action: 'decrypt' } },
+  { operation: 'crypt_text_private', arguments: { value: 'U2FsdGVkX188DHu+QI2qI5bnjxYsRt4F', secret: 'secret', algorithm: 'Rabbit', action: 'decrypt' } },
+  { operation: 'crypt_text_private', arguments: { value: 'U2FsdGVkX1/WxAb6+S0hDtDfUGbKgCY6', secret: 'secret', algorithm: 'RC4', action: 'decrypt' } },
   ...['MD5', 'RIPEMD160', 'SHA1', 'SHA3', 'SHA224', 'SHA256', 'SHA384', 'SHA512'].map(algorithm => ({ operation: 'hash_text_private', arguments: { value: 'abc', algorithm, encoding: 'Hex' } })),
   ...['MD5', 'RIPEMD160', 'SHA1', 'SHA3', 'SHA224', 'SHA256', 'SHA384', 'SHA512'].map(algorithm => ({ operation: 'hmac_private', arguments: { value: 'abc', secret: 'key', algorithm, encoding: 'Base64url' } })),
   { operation: 'bcrypt_private', arguments: { value: 'private', action: 'compare', rounds: 4, hash: '$2b$04$abcdefghijklmnopqrstuuSOK8qq7pwSzIsE/gr5lck387Zp7ucXu' } },
@@ -178,6 +182,7 @@ const oracleOperations = new Set(['convert_date_time', 'calculate_nd_exposure', 
 const oracle = spawn(process.execPath, [resolve(site, 'mcp/dist/killermcp.mjs')], { cwd: resolve(site, 'mcp'), stdio: ['pipe', 'pipe', 'pipe'] });
 oracleOperations.add('convert_color');
 oracleOperations.add('lookup_mac_vendor');
+oracleOperations.add('crypt_text_private');
 let oracleBuffer = '';
 let oracleError = '';
 let nextId = 1;

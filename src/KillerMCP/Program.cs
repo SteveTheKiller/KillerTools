@@ -154,6 +154,7 @@ static class ToolRegistry
         Tool("generate_lorem_ipsum", "Generate bounded Lorem Ipsum text using the KillerTools generator.", new { paragraphCount = new { type = "integer", minimum = 1, maximum = 10, @default = 1 }, sentencePerParagraph = new { type = "integer", minimum = 1, maximum = 10, @default = 3 }, wordCount = new { type = "integer", minimum = 1, maximum = 20, @default = 10 }, startWithLoremIpsum = BooleanSchema(true), asHTML = BooleanSchema(false) }, []),
         Tool("parse_jwt_private", "Decode a JWT locally without claiming to verify its signature.", new { token = new { type = "string", minLength = 3, maxLength = 16_384 } }, ["token"]),
         Tool("generate_rsa_keypair_private", "Generate an RSA PEM key pair locally.", new { bits = EnumSchema("2048", "3072", "4096") }, []),
+        Tool("crypt_text_private", "Encrypt or decrypt text locally with the KillerTools CryptoJS-compatible algorithms.", new { value = new { type = "string", maxLength = 8192 }, secret = new { type = "string", maxLength = 8192 }, algorithm = EnumSchema("AES", "TripleDES", "Rabbit", "RC4"), action = EnumSchema("encrypt", "decrypt") }, ["value", "secret", "action"]),
         Tool("hash_text_private", "Hash private text locally using the KillerTools hash algorithms.", new { value = new { type = "string", maxLength = 8192 }, algorithm = EnumSchema("MD5", "RIPEMD160", "SHA1", "SHA3", "SHA224", "SHA256", "SHA384", "SHA512"), encoding = EnumSchema("Bin", "Hex", "Base64", "Base64url") }, ["value"]),
         Tool("hmac_private", "Calculate an HMAC locally using the KillerTools hash algorithms.", new { value = new { type = "string", maxLength = 8192 }, secret = new { type = "string", maxLength = 8192 }, algorithm = EnumSchema("MD5", "RIPEMD160", "SHA1", "SHA3", "SHA224", "SHA256", "SHA384", "SHA512"), encoding = EnumSchema("Bin", "Hex", "Base64", "Base64url") }, ["value", "secret"]),
         Tool("bcrypt_private", "Hash or compare a string with bcrypt locally.", new { value = new { type = "string", maxLength = 8192 }, action = EnumSchema("hash", "compare"), rounds = new { type = "integer", minimum = 4, maximum = 14, @default = 10 }, hash = new { type = "string", maxLength = 128 } }, ["value", "action"]),
@@ -271,6 +272,7 @@ static class ToolRegistry
             "generate_lorem_ipsum" => new { text = LoremIpsum.Generate(OptionalInteger(arguments, "paragraphCount", 1), OptionalInteger(arguments, "sentencePerParagraph", 3), OptionalInteger(arguments, "wordCount", 10), OptionalBoolean(arguments, "startWithLoremIpsum", true), OptionalBoolean(arguments, "asHTML")) },
             "parse_jwt_private" => Jwt(arguments),
             "generate_rsa_keypair_private" => RsaKeyPairs.Generate(int.Parse(OptionalString(arguments, "bits", "2048"), System.Globalization.CultureInfo.InvariantCulture)),
+            "crypt_text_private" => CryptText(arguments),
             "hash_text_private" => new { hash = TextHashes.Hash(arguments.GetProperty("value").GetString()!, OptionalString(arguments, "algorithm", "SHA256"), OptionalString(arguments, "encoding", "Hex")) },
             "hmac_private" => new { hmac = TextHashes.Hmac(arguments.GetProperty("value").GetString()!, arguments.GetProperty("secret").GetString()!, OptionalString(arguments, "algorithm", "SHA256"), OptionalString(arguments, "encoding", "Hex")) },
             "bcrypt_private" => Bcrypt(arguments),
@@ -596,6 +598,20 @@ static class ToolRegistry
         }
         catch (ToolCallException) { throw; }
         catch (Exception) { throw new ToolCallException("Invalid bcrypt input"); }
+    }
+    private static object CryptText(JsonElement arguments)
+    {
+        try
+        {
+            string value = arguments.GetProperty("value").GetString()!;
+            string secret = arguments.GetProperty("secret").GetString()!;
+            string algorithm = OptionalString(arguments, "algorithm", "AES");
+            string output = arguments.GetProperty("action").GetString() == "encrypt"
+                ? CryptoJsText.Encrypt(value, secret, algorithm)
+                : CryptoJsText.Decrypt(value, secret, algorithm);
+            return new { output };
+        }
+        catch (Exception) { throw new ToolCallException("Unable to process encrypted text"); }
     }
     private static object DnsLookup(JsonElement arguments)
     {

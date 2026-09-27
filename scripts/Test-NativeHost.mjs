@@ -85,7 +85,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'otp_private', 'generate_otp_secret_private',
   'generate_ulids', 'generate_uuids', 'generate_lorem_ipsum',
   'parse_jwt_private',
-  'generate_rsa_keypair_private', 'hash_text_private', 'hmac_private', 'bcrypt_private', 'bip39_private',
+  'generate_rsa_keypair_private', 'crypt_text_private', 'hash_text_private', 'hmac_private', 'bcrypt_private', 'bip39_private',
   'analyze_password_private', 'generate_password_private',
   'evaluate_math',
   'list_film_stocks', 'calculate_reciprocity',
@@ -227,6 +227,11 @@ const lorem = await request('tools/call', { name: 'generate_lorem_ipsum', argume
 assert.equal(JSON.parse(lorem.content[0].text).text, 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.');
 const jwt = await request('tools/call', { name: 'parse_jwt_private', arguments: { token: 'eyJhbGciOiJub25lIn0.eyJzdWIiOiJsb2NhbCJ9.x' } });
 assert.equal(JSON.parse(jwt.content[0].text).signatureVerified, false);
+for (const algorithm of ['AES', 'TripleDES', 'Rabbit', 'RC4']) {
+  const encrypted = JSON.parse((await request('tools/call', { name: 'crypt_text_private', arguments: { value: 'private π', secret: 'secret', algorithm, action: 'encrypt' } })).content[0].text).output;
+  const decrypted = JSON.parse((await request('tools/call', { name: 'crypt_text_private', arguments: { value: encrypted, secret: 'secret', algorithm, action: 'decrypt' } })).content[0].text).output;
+  assert.equal(decrypted, 'private π');
+}
 const hash = await request('tools/call', { name: 'hash_text_private', arguments: { value: 'abc' } });
 assert.equal(JSON.parse(hash.content[0].text).hash, 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
 const bcryptHash = await request('tools/call', { name: 'bcrypt_private', arguments: { value: 'private', action: 'hash', rounds: 4 } });
