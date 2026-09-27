@@ -31,6 +31,8 @@
   "generate_spf_record": "verified",
   "generate_svg_placeholder": "verified",
   "json_to_csv": "verified",
+  "list_killer_modules": "verified",
+  "list_killer_scripts": "verified",
   "lookup_http_status": "verified",
   "lookup_group_policy": "verified",
   "lookup_exchange_ndr": "verified",

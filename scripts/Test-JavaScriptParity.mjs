@@ -95,6 +95,9 @@ const requests = [
   { operation: 'lookup_windows_error', arguments: { query: 'access denied', limit: 5 } },
   { operation: 'lookup_windows_event', arguments: { query: '4625', limit: 5 } },
   { operation: 'lookup_group_policy', arguments: { query: 'minimum password length', limit: 5 } },
+  { operation: 'list_killer_modules', arguments: {} },
+  { operation: 'list_killer_modules', arguments: { name: 'pivot' } },
+  { operation: 'list_killer_scripts', arguments: { query: 'AMORT' } },
   { operation: 'encode_file_base64_local', arguments: { path: parityFile } },
   { operation: 'otp_private', arguments: { secret: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', mode: 'hotp', counter: 0, timeStep: 30 } },
   { operation: 'otp_private', arguments: { secret: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', mode: 'hotp', counter: 0, timeStep: 30, code: '755224' } },
@@ -113,7 +116,7 @@ const requests = [
   { operation: 'calculate_reciprocity', arguments: { filmStockId: 'fuji-acros100ii', meteredSeconds: 120 } },
 ];
 
-const oracleOperations = new Set(['convert_date_time', 'calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'format_json', 'minify_json', 'diff_json', 'json_to_csv', 'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers', 'test_regex', 'lookup_http_status', 'lookup_port_protocol', 'lookup_exchange_ndr', 'lookup_m365_sku', 'lookup_windows_error', 'lookup_windows_event', 'lookup_group_policy', 'encode_file_base64_local', 'otp_private', 'generate_uuids', 'parse_jwt_private', 'analyze_password_private', 'evaluate_math', 'list_film_stocks', 'calculate_reciprocity']);
+const oracleOperations = new Set(['convert_date_time', 'calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'format_json', 'minify_json', 'diff_json', 'json_to_csv', 'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers', 'test_regex', 'lookup_http_status', 'lookup_port_protocol', 'lookup_exchange_ndr', 'lookup_m365_sku', 'lookup_windows_error', 'lookup_windows_event', 'lookup_group_policy', 'list_killer_modules', 'list_killer_scripts', 'encode_file_base64_local', 'otp_private', 'generate_uuids', 'parse_jwt_private', 'analyze_password_private', 'evaluate_math', 'list_film_stocks', 'calculate_reciprocity']);
 const oracle = spawn(process.execPath, [resolve(site, 'mcp/dist/killermcp.mjs')], { cwd: resolve(site, 'mcp'), stdio: ['pipe', 'pipe', 'pipe'] });
 let oracleBuffer = '';
 let oracleError = '';

@@ -70,6 +70,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'unescape_html_entities',
   'convert_date_time', 'lookup_exchange_ndr', 'lookup_group_policy', 'lookup_http_status',
   'lookup_m365_sku', 'lookup_port_protocol', 'lookup_windows_error', 'lookup_windows_event',
+  'list_killer_modules', 'list_killer_scripts',
   'diff_text', 'format_json', 'minify_json', 'diff_json', 'calculate_nd_exposure', 'calculate_exposure_equivalence',
   'calculate_depth_of_field', 'generate_svg_placeholder', 'calculate_chmod',
   'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv',
@@ -108,6 +109,10 @@ const statuses = await request('tools/call', { name: 'lookup_http_status', argum
 assert.equal(JSON.parse(statuses.content[0].text)[0].code, 404);
 const policies = await request('tools/call', { name: 'lookup_group_policy', arguments: { query: 'minimum password length', limit: 1 } });
 assert.equal(JSON.parse(policies.content[0].text)[0].name, 'Minimum Password Length');
+const modules = await request('tools/call', { name: 'list_killer_modules', arguments: { name: 'pivot' } });
+assert.equal(JSON.parse(modules.content[0].text)[0].name, 'KillerPivot');
+const scripts = await request('tools/call', { name: 'list_killer_scripts', arguments: { query: 'AMORT' } });
+assert.equal(JSON.parse(scripts.content[0].text)[0].filename, 'AMORT.ps1');
 const vietnameseNdr = await request('tools/call', { name: 'lookup_exchange_ndr', arguments: { query: 'SPF Validation Failed', limit: 1, locale: 'vi' } });
 assert.equal(JSON.parse(vietnameseNdr.content[0].text)[0].name, 'Xác thực SPF không thành công');
 const exposure = await request('tools/call', { name: 'calculate_nd_exposure', arguments: { baseSeconds: 0.5, stops: 6 } });

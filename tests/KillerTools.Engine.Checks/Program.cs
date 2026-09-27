@@ -28,6 +28,7 @@ var checks = new (string Name, Action Run)[]
     ("Microsoft reference lookups", CheckMicrosoftReferenceLookups),
     ("group policy lookup", CheckGroupPolicyLookup),
     ("reference translations", CheckReferenceTranslations),
+    ("Killer module and script catalogs", CheckKillerCatalogs),
     ("portable utilities", CheckPortableUtilities),
     ("bounded Base64 files", CheckBase64Files),
     ("one-time passwords", CheckOtp),
@@ -76,6 +77,17 @@ static void CheckReferenceTranslations()
     Equal("Xác thực SPF không thành công", ReferenceTranslations.Translate("exchange-ndr-lookup", "vi", "SPF Validation Failed"));
     Equal("Failed Logon", ReferenceTranslations.Translate("windows-event-lookup", "en", "Failed Logon"));
     Equal("Not Found", ReferenceTranslations.Translate("http-status-codes", "unknown", "Not Found"));
+}
+
+static void CheckKillerCatalogs()
+{
+    Equal("KillerPivot", KillerCatalogs.ListModules("pivot").Single()["name"]);
+    const string catalog = "{\"BETA.ps1\":{\"name\":\"Beta\",\"description\":\"Second\"},\"ALPHA.ps1\":{\"name\":\"Alpha\",\"description\":\"First\"}}";
+    using var client = new HttpClient(new StaticHttpHandler(catalog));
+    var scripts = KillerCatalogs.ListScriptsAsync("first", client).GetAwaiter().GetResult();
+    Equal(1, scripts.Count);
+    Equal("ALPHA.ps1", scripts[0].Filename);
+    Equal("https://raw.githubusercontent.com/SteveTheKiller/killer-scripts/main/ALPHA.ps1", scripts[0].DownloadUrl);
 }
 
 static void CheckMicrosoftReferenceLookups()
@@ -344,4 +356,12 @@ static void Throws<T>(Action action) where T : Exception
         return;
     }
     throw new InvalidOperationException($"Expected {typeof(T).Name}.");
+}
+
+sealed class StaticHttpHandler(string content) : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+    {
+        Content = new StringContent(content),
+    });
 }

@@ -96,6 +96,8 @@ static class ToolRegistry
         LookupTool("lookup_port_protocol", "Search the port and protocol reference."),
         LookupTool("lookup_windows_error", "Search the Windows error code reference."),
         LookupTool("lookup_windows_event", "Search the Windows Event ID reference."),
+        Tool("list_killer_modules", "List the KillerTools PowerShell modules, commands, install text, and repository links.", new { name = new { type = "string", maxLength = 80 } }, []),
+        Tool("list_killer_scripts", "List KillerScripts names, descriptions, and download links from GitHub.", new { query = new { type = "string", maxLength = 80, @default = "" } }, []),
         Tool("diff_text", "Compare two texts line by line.", new { left = StringSchema(), right = StringSchema() }, ["left", "right"]),
         Tool("format_json", "Prettify JSON5-compatible text with optional key sorting.", new { text = StructuredTextSchema(), indentSize = new { type = "integer", minimum = 0, maximum = 10, @default = 3 }, sortKeys = BooleanSchema(true) }, ["text"]),
         Tool("minify_json", "Minify JSON5-compatible text.", new { text = StructuredTextSchema() }, ["text"]),
@@ -176,6 +178,8 @@ static class ToolRegistry
             "lookup_port_protocol" => Localize("port-protocol-reference", PortProtocolLookup.Search(Query(arguments), Limit(arguments)), Locale(arguments)),
             "lookup_windows_error" => Localize("windows-error-codes", MicrosoftReferenceLookups.SearchErrors(Query(arguments), Limit(arguments)), Locale(arguments)),
             "lookup_windows_event" => Localize("windows-event-lookup", MicrosoftReferenceLookups.SearchEvents(Query(arguments), Limit(arguments)), Locale(arguments)),
+            "list_killer_modules" => KillerCatalogs.ListModules(OptionalNullableString(arguments, "name")),
+            "list_killer_scripts" => KillerScripts(arguments),
             "diff_text" => TextDiff.Compare(arguments.GetProperty("left").GetString()!, arguments.GetProperty("right").GetString()!),
             "format_json" => JsonFormat(arguments),
             "minify_json" => JsonMinify(arguments),
@@ -324,6 +328,17 @@ static class ToolRegistry
         catch (Exception exception) when (exception is FormatException or ArgumentException)
         {
             throw new ToolCallException("Invalid document input");
+        }
+    }
+    private static object KillerScripts(JsonElement arguments)
+    {
+        try
+        {
+            return KillerCatalogs.ListScriptsAsync(OptionalString(arguments, "query", "")).GetAwaiter().GetResult();
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or InvalidDataException or JsonException)
+        {
+            throw new ToolCallException("Script catalog is unavailable");
         }
     }
     private static object Svg(JsonElement arguments)

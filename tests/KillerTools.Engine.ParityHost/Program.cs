@@ -63,6 +63,8 @@ foreach (var request in input.RootElement.EnumerateArray())
         "lookup_m365_sku" => MicrosoftReferenceResult(operation, arguments),
         "lookup_windows_error" => MicrosoftReferenceResult(operation, arguments),
         "lookup_windows_event" => MicrosoftReferenceResult(operation, arguments),
+        "list_killer_modules" => KillerCatalogs.ListModules(arguments.TryGetProperty("name", out var moduleName) ? moduleName.GetString() : null),
+        "list_killer_scripts" => (await KillerCatalogs.ListScriptsAsync(arguments.TryGetProperty("query", out var scriptQuery) ? scriptQuery.GetString() : null)).Select(script => new { filename = script.Filename, name = script.Name, description = script.Description, downloadUrl = script.DownloadUrl }),
         "encode_file_base64_local" => EncodedFileResult(arguments),
         "otp_private" => OtpResult(arguments),
         "generate_uuids" => new { ids = IdentifierGenerators.GenerateUuids(arguments.GetProperty("version").GetString()!, arguments.GetProperty("count").GetInt32(), arguments.TryGetProperty("name", out var name) ? name.GetString() : null, arguments.TryGetProperty("namespace", out var namespaceValue) ? namespaceValue.GetString() : null) },
