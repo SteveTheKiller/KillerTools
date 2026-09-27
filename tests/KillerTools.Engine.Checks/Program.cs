@@ -15,6 +15,7 @@ var checks = new (string Name, Action Run)[]
     ("Unicode entities", CheckUnicodeEntities),
     ("percentages", CheckPercentages),
     ("text conversions", CheckTextConversions),
+    ("FIGlet text", CheckAsciiArt),
     ("case conversions", CheckCaseConversions),
     ("Lorem Ipsum generation", CheckLoremIpsum),
     ("date time conversions", CheckDateTimeConversions),
@@ -74,6 +75,15 @@ static void CheckLoremIpsum()
     Equal("Lorem ipsum dolor sit amet, consectetur adipiscing elit.", LoremIpsum.Generate(1, 1, 4));
     Equal("<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>", LoremIpsum.Generate(1, 1, 4, true, true));
     Throws<ArgumentOutOfRangeException>(() => LoremIpsum.Generate(11));
+}
+
+static void CheckAsciiArt()
+{
+    Equal("  _   _ _ \n | | | (_)\n | |_| | |\n |  _  | |\n |_| |_|_|\n          ", AsciiArt.Draw("Hi"));
+    Equal("Ⓚⓘⓛⓛⓔⓡ", AsciiArt.Draw("Killer", "Circle", 20));
+    Equal(317, AsciiArt.FontNames().Count);
+    Throws<ArgumentException>(() => AsciiArt.Draw("test", "../font"));
+    Throws<ArgumentOutOfRangeException>(() => AsciiArt.Draw("test", "Standard", 19));
 }
 
 static void CheckDateTimeConversions()

@@ -65,7 +65,7 @@ assert.match(initialized.instructions, /KillerMCP 0\.1\.3 is available/);
 const listed = await request('tools/list');
 assert.deepEqual(listed.tools.map(tool => tool.name), [
   'text_statistics', 'convert_case', 'encode_base64', 'decode_base64', 'text_to_ascii_binary',
-  'ascii_binary_to_text', 'arabic_to_roman', 'roman_to_arabic', 'text_to_nato_alphabet',
+  'ascii_binary_to_text', 'draw_ascii_text', 'arabic_to_roman', 'roman_to_arabic', 'text_to_nato_alphabet',
   'convert_integer_base', 'convert_temperature', 'calculate_percentage', 'escape_html_entities',
   'unescape_html_entities', 'markdown_to_html',
   'convert_date_time', 'lookup_exchange_ndr', 'lookup_group_policy', 'lookup_http_status',
@@ -109,6 +109,8 @@ const called = await request('tools/call', { name: 'text_statistics', arguments:
 assert.deepEqual(JSON.parse(called.content[0].text), { characterCount: 11, wordCount: 2, lineCount: 1, byteSize: 11 });
 const encoded = await request('tools/call', { name: 'encode_base64', arguments: { text: 'hé' } });
 assert.deepEqual(JSON.parse(encoded.content[0].text), { encoded: 'aMOp' });
+const asciiArt = await request('tools/call', { name: 'draw_ascii_text', arguments: { text: 'Killer', font: 'Circle', width: 20 } });
+assert.deepEqual(JSON.parse(asciiArt.content[0].text), { art: 'Ⓚⓘⓛⓛⓔⓡ' });
 const percentage = await request('tools/call', { name: 'calculate_percentage', arguments: { mode: 'change', x: 10, y: 12 } });
 assert.deepEqual(JSON.parse(percentage.content[0].text), { value: '+20%' });
 const statuses = await request('tools/call', { name: 'lookup_http_status', arguments: { query: 'not found' } });

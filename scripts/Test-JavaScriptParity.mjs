@@ -45,6 +45,9 @@ const requests = [
   { operation: 'decode_base64', arguments: { encoded: 'aMOp' } },
   { operation: 'text_to_ascii_binary', arguments: { text: 'Az' } },
   { operation: 'ascii_binary_to_text', arguments: { binary: '01000001 01111010' } },
+  { operation: 'draw_ascii_text', arguments: { text: 'Hello World', font: 'Standard', width: 20 } },
+  { operation: 'draw_ascii_text', arguments: { text: 'Killer Tools', font: 'Slant', width: 30 } },
+  { operation: 'draw_ascii_text', arguments: { text: 'Killer', font: 'Circle', width: 20 } },
   { operation: 'arabic_to_roman', arguments: { number: 1999 } },
   { operation: 'roman_to_arabic', arguments: { roman: 'MCMXCIX' } },
   { operation: 'text_to_nato_alphabet', arguments: { text: 'SOS 2' } },
@@ -183,6 +186,7 @@ const oracle = spawn(process.execPath, [resolve(site, 'mcp/dist/killermcp.mjs')]
 oracleOperations.add('convert_color');
 oracleOperations.add('lookup_mac_vendor');
 oracleOperations.add('crypt_text_private');
+oracleOperations.add('draw_ascii_text');
 let oracleBuffer = '';
 let oracleError = '';
 let nextId = 1;

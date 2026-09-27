@@ -23,6 +23,7 @@
   "describe_cron": "verified",
   "diff_json": "verified",
   "diff_text": "verified",
+  "draw_ascii_text": "verified",
   "encode_base64": "verified",
   "encode_file_base64_local": "verified",
   "evaluate_math": "verified",
