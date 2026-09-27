@@ -23,6 +23,9 @@ try {
     dotnet run --project tests\KillerTools.Engine.Checks\KillerTools.Engine.Checks.csproj --no-build
     if ($LASTEXITCODE -ne 0) { throw 'Native engine checks failed.' }
 
+    dotnet run --project tests\KillerMCP.Clients.Checks\KillerMCP.Clients.Checks.csproj --no-build
+    if ($LASTEXITCODE -ne 0) { throw 'Native KillerMCP client registration checks failed.' }
+
     node scripts\Test-NativeHost.mjs
     if ($LASTEXITCODE -ne 0) { throw 'Native KillerMCP host check failed.' }
 
