@@ -74,6 +74,8 @@ foreach (var request in input.RootElement.EnumerateArray())
         "evaluate_math" => new { value = BoundedMath.Evaluate(arguments.GetProperty("expression").GetString()!) },
         "list_film_stocks" => FilmReciprocity.List().Select(stock => new { id = stock.Id, name = stock.Name, manufacturer = stock.Manufacturer, iso = stock.Iso, type = stock.Type }),
         "calculate_reciprocity" => ReciprocityResult(arguments),
+        "list_film_development_options" => DevelopmentOptionsResult(),
+        "calculate_film_development" => DevelopmentResult(arguments),
         _ => throw new InvalidOperationException($"Unknown parity operation: {operation}"),
     });
 }
@@ -82,6 +84,36 @@ static object DateTimeResult(JsonElement arguments)
 {
     var value = DateTimeConverter.Convert(arguments.GetProperty("value").GetString()!, arguments.GetProperty("inputFormat").GetString()!);
     return new { iso8601 = value.Iso8601, iso9075 = value.Iso9075, rfc3339 = value.Rfc3339, rfc7231 = value.Rfc7231, unixSeconds = value.UnixSeconds, timestampMs = value.TimestampMs, utc = value.Utc, mongoObjectId = value.MongoObjectId, excel = value.Excel };
+}
+
+static object DevelopmentOptionsResult() => new
+{
+    developers = FilmDevelopment.Developers.Select(developer => new
+    {
+        id = developer.Id,
+        name = developer.Name,
+        dilutions = developer.Dilutions.Select(dilution => new { label = dilution.Label, devParts = dilution.DevParts, waterParts = dilution.WaterParts }),
+        defaultDilution = developer.DefaultDilution,
+    }),
+    films = FilmDevelopment.Films.Select(film =>
+    {
+        var item = new Dictionary<string, object> { ["name"] = film.Name, ["isoBase"] = film.IsoBase };
+        if (film.Process is not null) item["process"] = film.Process;
+        return item;
+    }),
+};
+
+static object DevelopmentResult(JsonElement arguments)
+{
+    var value = FilmDevelopment.Calculate(
+        arguments.GetProperty("filmName").GetString()!,
+        arguments.GetProperty("developerId").GetString()!,
+        arguments.TryGetProperty("dilutionIndex", out var dilutionIndex) ? dilutionIndex.GetInt32() : null,
+        arguments.TryGetProperty("baseSeconds", out var baseSeconds) ? baseSeconds.GetDouble() : null,
+        arguments.TryGetProperty("temperatureC", out var temperature) ? temperature.GetDouble() : null,
+        arguments.TryGetProperty("pushPullStops", out var stops) ? stops.GetDouble() : 0,
+        arguments.TryGetProperty("tankMl", out var tank) ? tank.GetDouble() : 500);
+    return new { baseSeconds = value.BaseSeconds, temperatureAdjustedSeconds = value.TemperatureAdjustedSeconds, finalSeconds = value.FinalSeconds, displayTime = value.DisplayTime, dilution = value.Dilution, devMl = value.DevMl, waterMl = value.WaterMl, process = value.Process };
 }
 
 static object EncodedFileResult(JsonElement arguments)

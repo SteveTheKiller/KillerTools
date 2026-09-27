@@ -129,6 +129,8 @@ static class ToolRegistry
         Tool("evaluate_math", "Evaluate a bounded arithmetic expression.", new { expression = new { type = "string", minLength = 1, maxLength = 256 } }, ["expression"]),
         Tool("list_film_stocks", "List the film stocks available in KillerTools Reciprocity Calculator.", new { }, []),
         Tool("calculate_reciprocity", "Calculate reciprocity failure adjustment for a film stock.", new { filmStockId = new { type = "string", minLength = 1, maxLength = 64 }, meteredSeconds = new { type = "number", minimum = 0.0001, maximum = 3600 } }, ["filmStockId", "meteredSeconds"]),
+        Tool("list_film_development_options", "List films and developers available in KillerTools Film Development Calculator.", new { }, []),
+        Tool("calculate_film_development", "Calculate film development time and dilution volumes using KillerTools.", new { filmName = new { type = "string", minLength = 1, maxLength = 128 }, developerId = new { type = "string", minLength = 1, maxLength = 32 }, dilutionIndex = new { type = "integer", minimum = 0, maximum = 10 }, baseSeconds = new { type = "number", minimum = 1, maximum = 10_000 }, temperatureC = new { type = "number", minimum = 10, maximum = 42 }, pushPullStops = new { type = "number", minimum = -5, maximum = 5, @default = 0 }, tankMl = new { type = "number", minimum = 100, maximum = 2000, @default = 500 } }, ["filmName", "developerId"]),
         Tool("killermcp_update_status", "Check the installed KillerMCP version and whether a newer signed Windows installer is available.", new { }, []),
     ];
 
@@ -212,6 +214,8 @@ static class ToolRegistry
             "evaluate_math" => EvaluateMath(arguments),
             "list_film_stocks" => FilmReciprocity.List(),
             "calculate_reciprocity" => Reciprocity(arguments),
+            "list_film_development_options" => DevelopmentOptions(),
+            "calculate_film_development" => DevelopmentResult(arguments),
             "killermcp_update_status" => UpdateStatus(arguments),
             _ => throw new InvalidOperationException($"Unknown tool: {name}"),
             };
@@ -485,6 +489,33 @@ static class ToolRegistry
         {
             throw new ToolCallException(exception.Message);
         }
+    }
+    private static object DevelopmentOptions() => new
+    {
+        developers = FilmDevelopment.Developers,
+        films = FilmDevelopment.Films.Select(film =>
+        {
+            var item = new Dictionary<string, object> { ["name"] = film.Name, ["isoBase"] = film.IsoBase };
+            if (film.Process is not null) item["process"] = film.Process;
+            return item;
+        }),
+    };
+    private static object DevelopmentResult(JsonElement arguments)
+    {
+        try
+        {
+            return FilmDevelopment.Calculate(
+                arguments.GetProperty("filmName").GetString()!,
+                arguments.GetProperty("developerId").GetString()!,
+                arguments.TryGetProperty("dilutionIndex", out var dilutionIndex) ? dilutionIndex.GetInt32() : null,
+                arguments.TryGetProperty("baseSeconds", out var baseSeconds) ? baseSeconds.GetDouble() : null,
+                arguments.TryGetProperty("temperatureC", out var temperature) ? temperature.GetDouble() : null,
+                arguments.TryGetProperty("pushPullStops", out var stops) ? stops.GetDouble() : 0,
+                arguments.TryGetProperty("tankMl", out var tank) ? tank.GetDouble() : 500);
+        }
+        catch (KeyNotFoundException exception) { throw new ToolCallException(exception.Message); }
+        catch (ArgumentOutOfRangeException) { throw new ToolCallException("Invalid dilution index"); }
+        catch (InvalidOperationException exception) { throw new ToolCallException(exception.Message); }
     }
 
     private static string? OptionalNullableString(JsonElement arguments, string name) => arguments.TryGetProperty(name, out var value) ? value.GetString() : null;

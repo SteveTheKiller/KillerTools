@@ -84,6 +84,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'analyze_password_private',
   'evaluate_math',
   'list_film_stocks', 'calculate_reciprocity',
+  'list_film_development_options', 'calculate_film_development',
   'killermcp_update_status',
   'killernotes_search',
   'killendar_agenda',
@@ -170,6 +171,10 @@ const stocks = await request('tools/call', { name: 'list_film_stocks', arguments
 assert.equal(JSON.parse(stocks.content[0].text).length, 41);
 const reciprocity = await request('tools/call', { name: 'calculate_reciprocity', arguments: { filmStockId: 'fuji-acros100ii', meteredSeconds: 120 } });
 assert.equal(JSON.parse(reciprocity.content[0].text).noFailure, true);
+const developmentOptions = await request('tools/call', { name: 'list_film_development_options', arguments: {} });
+assert.ok(JSON.parse(developmentOptions.content[0].text).developers.some(developer => developer.id === 'd76'));
+const development = await request('tools/call', { name: 'calculate_film_development', arguments: { filmName: 'Ilford HP5 Plus', developerId: 'd76' } });
+assert.equal(JSON.parse(development.content[0].text).displayTime, '6m 30s');
 const update = await request('tools/call', { name: 'killermcp_update_status', arguments: {} });
 assert.equal(JSON.parse(update.content[0].text).updateAvailable, true);
 assert.equal(updateRequests, 1);

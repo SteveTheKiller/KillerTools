@@ -39,6 +39,7 @@ var checks = new (string Name, Action Run)[]
     ("password strength", CheckPasswordStrength),
     ("bounded math", CheckBoundedMath),
     ("film reciprocity", CheckFilmReciprocity),
+    ("film development", CheckFilmDevelopment),
 };
 
 foreach (var check in checks)
@@ -299,6 +300,21 @@ static void CheckFilmReciprocity()
     var acros = FilmReciprocity.Calculate("fuji-acros100ii", 120);
     Equal(120d, acros.AdjustedSeconds);
     Equal(true, acros.NoFailure);
+}
+
+static void CheckFilmDevelopment()
+{
+    Equal(10, FilmDevelopment.Developers.Count);
+    Equal(74, FilmDevelopment.Films.Count);
+    Equal("D-76", FilmDevelopment.Developers.Single(item => item.Id == "d76").Name);
+    var result = FilmDevelopment.Calculate("Ilford HP5 Plus", "d76");
+    Equal(390d, result.BaseSeconds);
+    Equal(390d, result.FinalSeconds);
+    Equal("6m 30s", result.DisplayTime);
+    Equal(500d, result.DevMl);
+    Equal(0d, result.WaterMl);
+    Equal("bw", result.Process);
+    Throws<KeyNotFoundException>(() => FilmDevelopment.Calculate("Unknown", "d76"));
 }
 
 static void CheckHtmlAndDiff()
