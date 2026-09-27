@@ -25,16 +25,18 @@ namespace KillerMCP.Setup
             GrainLayer.Background = CreateGrain();
         }
 
-        internal static bool ConfirmUninstall()
+        internal static bool ConfirmUninstall(Window? owner = null)
         {
-            var application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+            bool ownsApplication = Application.Current == null;
+            Application? application = ownsApplication ? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown } : null;
             var dialog = new SetupDialog(
                 "Uninstall KillerMCP?",
                 "This removes KillerMCP and disconnects it from compatible agent clients on this computer.",
                 confirmation: true);
+            if (owner != null) { dialog.Owner = owner; dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner; }
             dialog.ShowDialog();
             bool result = dialog._confirmed;
-            application.Shutdown();
+            application?.Shutdown();
             return result;
         }
 

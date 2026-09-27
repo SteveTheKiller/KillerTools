@@ -13,6 +13,7 @@ namespace KillerMCP.Setup
         private readonly string _destination;
         private readonly bool _isolated;
         private bool _installed;
+        private string? _installedVersion;
 
         private InstallerWizard(string destination, bool isolated)
         {
@@ -26,6 +27,7 @@ namespace KillerMCP.Setup
             SidebarGrain.Background = grain;
             FrameGrain.Background = grain;
             SetRuntimeStatus();
+            SetInstallState();
         }
 
         internal static int Run(string destination, bool isolated)
@@ -46,6 +48,19 @@ namespace KillerMCP.Setup
             InstallButton.IsEnabled = ready;
         }
 
+        private void SetInstallState()
+        {
+            _installedVersion = Program.InstalledVersion(_destination);
+            bool present = _installedVersion != null;
+            UninstallButton.Visibility = present ? Visibility.Visible : Visibility.Collapsed;
+            if (!present) return;
+
+            bool current = string.Equals(_installedVersion, Program.CurrentVersion, StringComparison.Ordinal);
+            Heading.Text = current ? "KillerMCP is already installed" : "KillerMCP is ready to upgrade";
+            Status.Text = "Installed version " + _installedVersion;
+            InstallButton.Content = current ? "Reinstall" : "Upgrade";
+        }
+
         private async void Install_Click(object sender, RoutedEventArgs e)
         {
             if (_installed) { DialogResult = true; return; }
@@ -62,12 +77,40 @@ namespace KillerMCP.Setup
                 Status.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 165, 76));
                 InstallButton.Content = "Done";
                 InstallButton.IsEnabled = true;
+                UninstallButton.Visibility = Visibility.Collapsed;
             }
             catch (Exception exception)
             {
                 Status.Text = exception.Message;
                 Status.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(227, 93, 106));
                 InstallButton.IsEnabled = true;
+            }
+        }
+
+        private async void Uninstall_Click(object sender, RoutedEventArgs e)
+        {
+            if (!SetupDialog.ConfirmUninstall(this)) return;
+            try
+            {
+                InstallButton.IsEnabled = false;
+                UninstallButton.IsEnabled = false;
+                Heading.Text = "Uninstalling KillerMCP";
+                Status.Text = "Removing the native runtime and agent connections...";
+                await Task.WhenAll(Task.Run(() => Program.UninstallRegistered(_destination)), Task.Delay(700));
+                _installed = true;
+                Heading.Text = "KillerMCP was uninstalled";
+                Status.Text = "KillerMCP and its agent connections were removed.";
+                Status.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 165, 76));
+                InstallButton.Content = "Done";
+                InstallButton.IsEnabled = true;
+                UninstallButton.Visibility = Visibility.Collapsed;
+            }
+            catch (Exception exception)
+            {
+                Status.Text = exception.Message;
+                Status.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(227, 93, 106));
+                InstallButton.IsEnabled = true;
+                UninstallButton.IsEnabled = true;
             }
         }
 

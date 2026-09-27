@@ -78,6 +78,7 @@
                     <TextBlock x:Name="Status" Grid.Row="3" Margin="0,8,0,10" FontFamily="Consolas" FontSize="10.5" Foreground="#aaaaaa" Text="Ready to install" TextWrapping="Wrap"/>
                     <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Content="Cancel" Style="{StaticResource Button}" Click="Cancel_Click"/>
+                        <Button x:Name="UninstallButton" Content="Uninstall" Style="{StaticResource Button}" Click="Uninstall_Click" Visibility="Collapsed"/>
                         <Button x:Name="InstallButton" Content="Install" Style="{StaticResource Primary}" Click="Install_Click"/>
                     </StackPanel>
                   </Grid>

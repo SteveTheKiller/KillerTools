@@ -113,6 +113,25 @@ namespace KillerMCP.Setup
             DeleteVerifiedInstallation(destination);
         }
 
+        internal static void UninstallRegistered(string destination)
+        {
+            Uninstall(destination, removeRegistration: true);
+            RemoveInstalledApp(destination);
+        }
+
+        internal static string? InstalledVersion(string destination)
+        {
+            if (!Directory.Exists(destination)) return null;
+            ValidateInstalled(destination, allowLegacy: true);
+            using (RegistryKey? key = Registry.CurrentUser.OpenSubKey(RegistryPath(destination)))
+            {
+                string? version = key?.GetValue("DisplayVersion") as string;
+                if (!string.IsNullOrWhiteSpace(version)) return version;
+            }
+            string executable = Path.Combine(destination, "KillerMCP.exe");
+            return File.Exists(executable) ? FileVersionInfo.GetVersionInfo(executable).FileVersion : "installed";
+        }
+
         private static void Configure(string destination, string action)
         {
             string executable = Path.Combine(destination, "KillerMCP.exe");
