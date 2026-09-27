@@ -31,6 +31,7 @@ var checks = new (string Name, Action Run)[]
     ("bounded Base64 files", CheckBase64Files),
     ("one-time passwords", CheckOtp),
     ("identifier generators", CheckIdentifierGenerators),
+    ("JWT decoding", CheckJwt),
 };
 
 foreach (var check in checks)
@@ -203,6 +204,15 @@ static void CheckIdentifierGenerators()
     var ulid = IdentifierGenerators.GenerateUlids(1)[0];
     Equal(26, ulid.Length);
     Equal(true, ulid.All(character => "0123456789ABCDEFGHJKMNPQRSTVWXYZ".Contains(character)));
+}
+
+static void CheckJwt()
+{
+    var result = JwtParser.Decode("eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJsb2NhbCIsInJvbGVzIjpbImFkbWluIl19.x");
+    Equal("none", result.Header.GetProperty("alg").GetString());
+    Equal("local", result.Payload.GetProperty("sub").GetString());
+    Equal("Subject", result.PayloadClaims.Single(claim => (string)claim["claim"]! == "sub")["claimDescription"]);
+    Equal(false, result.SignatureVerified);
 }
 
 static void CheckHtmlAndDiff()

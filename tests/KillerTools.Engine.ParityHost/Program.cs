@@ -63,6 +63,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "encode_file_base64_local" => EncodedFileResult(arguments),
         "otp_private" => OtpResult(arguments),
         "generate_uuids" => new { ids = IdentifierGenerators.GenerateUuids(arguments.GetProperty("version").GetString()!, arguments.GetProperty("count").GetInt32(), arguments.TryGetProperty("name", out var name) ? name.GetString() : null, arguments.TryGetProperty("namespace", out var namespaceValue) ? namespaceValue.GetString() : null) },
+        "parse_jwt_private" => JwtResult(arguments),
         _ => throw new InvalidOperationException($"Unknown parity operation: {operation}"),
     });
 }
@@ -88,6 +89,12 @@ static object OtpResult(JsonElement arguments)
         return new { matches = OtpTools.VerifyCode(secret, counter, code.GetString()!) };
     }
     return new { code = OtpTools.GenerateCode(secret, counter), counter };
+}
+
+static object JwtResult(JsonElement arguments)
+{
+    var value = JwtParser.Decode(arguments.GetProperty("token").GetString()!);
+    return new { header = value.Header, payload = value.Payload, headerClaims = value.HeaderClaims, payloadClaims = value.PayloadClaims, signatureVerified = value.SignatureVerified };
 }
 
 static object MicrosoftReferenceResult(string operation, JsonElement arguments)

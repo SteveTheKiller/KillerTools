@@ -37,6 +37,7 @@
   "parse_url": "verified",
   "otp_private": "verified",
   "parse_email_headers": "verified",
+  "parse_jwt_private": "verified",
   "text_to_ascii_binary": "verified",
   "text_to_nato_alphabet": "verified",
   "text_statistics": "verified",

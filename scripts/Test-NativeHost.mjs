@@ -45,6 +45,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'encode_file_base64_local', 'decode_file_base64_local',
   'otp_private', 'generate_otp_secret_private',
   'generate_ulids', 'generate_uuids',
+  'parse_jwt_private',
 ]);
 const called = await request('tools/call', { name: 'text_statistics', arguments: { text: 'hello world' } });
 assert.deepEqual(JSON.parse(called.content[0].text), { characterCount: 11, wordCount: 2, lineCount: 1, byteSize: 11 });
@@ -91,5 +92,7 @@ const ulids = await request('tools/call', { name: 'generate_ulids', arguments: {
 assert.match(JSON.parse(ulids.content[0].text).ids[0], /^[0-9A-HJKMNP-TV-Z]{26}$/);
 const uuids = await request('tools/call', { name: 'generate_uuids', arguments: { version: 'v5', count: 1, name: 'example.com', namespace: '6ba7b810-9dad-11d1-80b4-00c04fd430c8' } });
 assert.deepEqual(JSON.parse(uuids.content[0].text).ids, ['cfbff0d1-9375-5685-968c-48ce8b15ae17']);
+const jwt = await request('tools/call', { name: 'parse_jwt_private', arguments: { token: 'eyJhbGciOiJub25lIn0.eyJzdWIiOiJsb2NhbCJ9.x' } });
+assert.equal(JSON.parse(jwt.content[0].text).signatureVerified, false);
 child.stdin.end();
 console.log('Native KillerMCP stdio handshake, tool listing, and tool call passed.');

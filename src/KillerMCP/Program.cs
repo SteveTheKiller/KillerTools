@@ -87,6 +87,7 @@ static class ToolRegistry
         Tool("generate_otp_secret_private", "Generate a random Base32 OTP secret and an otpauth URI locally.", new { issuer = new { type = "string", minLength = 1, maxLength = 128, @default = "killer-tools" }, account = new { type = "string", minLength = 1, maxLength = 128, @default = "demo-user" } }, []),
         Tool("generate_ulids", "Generate up to 100 ULIDs.", new { count = new { type = "integer", minimum = 1, maximum = 100, @default = 1 } }, []),
         Tool("generate_uuids", "Generate up to 100 UUIDs.", new { version = EnumSchema("NIL", "v1", "v3", "v4", "v5"), count = new { type = "integer", minimum = 1, maximum = 100, @default = 1 }, name = new { type = "string", maxLength = 128 }, @namespace = new { type = "string", maxLength = 36 } }, []),
+        Tool("parse_jwt_private", "Decode a JWT locally without claiming to verify its signature.", new { token = new { type = "string", minLength = 3, maxLength = 16_384 } }, ["token"]),
     ];
 
     public static object Call(JsonElement parameters, JsonSerializerOptions json)
@@ -140,6 +141,7 @@ static class ToolRegistry
             "generate_otp_secret_private" => OtpTools.GenerateSecret(OptionalString(arguments, "issuer", "killer-tools"), OptionalString(arguments, "account", "demo-user")),
             "generate_ulids" => new { ids = IdentifierGenerators.GenerateUlids(OptionalInteger(arguments, "count", 1)) },
             "generate_uuids" => Uuids(arguments),
+            "parse_jwt_private" => Jwt(arguments),
             _ => throw new InvalidOperationException($"Unknown tool: {name}"),
             };
             return new { content = new[] { new { type = "text", text = JsonSerializer.Serialize(value, json) } } };
@@ -292,6 +294,17 @@ static class ToolRegistry
         catch (FormatException exception)
         {
             throw new ToolCallException(exception.Message);
+        }
+    }
+    private static object Jwt(JsonElement arguments)
+    {
+        try
+        {
+            return JwtParser.Decode(arguments.GetProperty("token").GetString()!);
+        }
+        catch (Exception exception) when (exception is FormatException or JsonException)
+        {
+            throw new ToolCallException("Invalid JWT");
         }
     }
 
