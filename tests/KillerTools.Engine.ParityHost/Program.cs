@@ -81,6 +81,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "parse_jwt_private" => JwtResult(arguments),
         "hash_text_private" => new { hash = TextHashes.Hash(arguments.GetProperty("value").GetString()!, arguments.GetProperty("algorithm").GetString()!, arguments.GetProperty("encoding").GetString()!) },
         "hmac_private" => new { hmac = TextHashes.Hmac(arguments.GetProperty("value").GetString()!, arguments.GetProperty("secret").GetString()!, arguments.GetProperty("algorithm").GetString()!, arguments.GetProperty("encoding").GetString()!) },
+        "bcrypt_private" => new { matches = PasswordBcrypt.Verify(arguments.GetProperty("value").GetString()!, arguments.GetProperty("hash").GetString()!) },
         "analyze_password_private" => PasswordStrengthResult(arguments),
         "evaluate_math" => new { value = BoundedMath.Evaluate(arguments.GetProperty("expression").GetString()!) },
         "list_film_stocks" => FilmReciprocity.List().Select(stock => new { id = stock.Id, name = stock.Name, manufacturer = stock.Manufacturer, iso = stock.Iso, type = stock.Type }),

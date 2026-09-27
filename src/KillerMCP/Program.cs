@@ -136,6 +136,7 @@ static class ToolRegistry
         Tool("generate_rsa_keypair_private", "Generate an RSA PEM key pair locally.", new { bits = EnumSchema("2048", "3072", "4096") }, []),
         Tool("hash_text_private", "Hash private text locally using the KillerTools hash algorithms.", new { value = new { type = "string", maxLength = 8192 }, algorithm = EnumSchema("MD5", "RIPEMD160", "SHA1", "SHA3", "SHA224", "SHA256", "SHA384", "SHA512"), encoding = EnumSchema("Bin", "Hex", "Base64", "Base64url") }, ["value"]),
         Tool("hmac_private", "Calculate an HMAC locally using the KillerTools hash algorithms.", new { value = new { type = "string", maxLength = 8192 }, secret = new { type = "string", maxLength = 8192 }, algorithm = EnumSchema("MD5", "RIPEMD160", "SHA1", "SHA3", "SHA224", "SHA256", "SHA384", "SHA512"), encoding = EnumSchema("Bin", "Hex", "Base64", "Base64url") }, ["value", "secret"]),
+        Tool("bcrypt_private", "Hash or compare a string with bcrypt locally.", new { value = new { type = "string", maxLength = 8192 }, action = EnumSchema("hash", "compare"), rounds = new { type = "integer", minimum = 4, maximum = 14, @default = 10 }, hash = new { type = "string", maxLength = 128 } }, ["value", "action"]),
         Tool("analyze_password_private", "Estimate password strength and crack time locally.", new { password = new { type = "string", maxLength = 8192 } }, ["password"]),
         Tool("evaluate_math", "Evaluate a bounded arithmetic expression.", new { expression = new { type = "string", minLength = 1, maxLength = 256 } }, ["expression"]),
         Tool("list_film_stocks", "List the film stocks available in KillerTools Reciprocity Calculator.", new { }, []),
@@ -231,6 +232,7 @@ static class ToolRegistry
             "generate_rsa_keypair_private" => RsaKeyPairs.Generate(int.Parse(OptionalString(arguments, "bits", "2048"), System.Globalization.CultureInfo.InvariantCulture)),
             "hash_text_private" => new { hash = TextHashes.Hash(arguments.GetProperty("value").GetString()!, OptionalString(arguments, "algorithm", "SHA256"), OptionalString(arguments, "encoding", "Hex")) },
             "hmac_private" => new { hmac = TextHashes.Hmac(arguments.GetProperty("value").GetString()!, arguments.GetProperty("secret").GetString()!, OptionalString(arguments, "algorithm", "SHA256"), OptionalString(arguments, "encoding", "Hex")) },
+            "bcrypt_private" => Bcrypt(arguments),
             "analyze_password_private" => PasswordStrength.Analyze(arguments.GetProperty("password").GetString()!),
             "evaluate_math" => EvaluateMath(arguments),
             "list_film_stocks" => FilmReciprocity.List(),
@@ -443,6 +445,21 @@ static class ToolRegistry
             };
         }
         catch (Exception) { throw new ToolCallException("Invalid cron expression"); }
+    }
+    private static object Bcrypt(JsonElement arguments)
+    {
+        try
+        {
+            var value = arguments.GetProperty("value").GetString()!;
+            if (arguments.GetProperty("action").GetString() == "compare")
+            {
+                if (!arguments.TryGetProperty("hash", out var hash) || string.IsNullOrEmpty(hash.GetString())) throw new ToolCallException("A bcrypt hash is required");
+                return new { matches = PasswordBcrypt.Verify(value, hash.GetString()!) };
+            }
+            return new { hash = PasswordBcrypt.Hash(value, OptionalInteger(arguments, "rounds", 10)) };
+        }
+        catch (ToolCallException) { throw; }
+        catch (Exception) { throw new ToolCallException("Invalid bcrypt input"); }
     }
     private static object KillerScripts(JsonElement arguments)
     {

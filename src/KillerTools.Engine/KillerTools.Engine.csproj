@@ -4,6 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="Data\*" />
+    <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageReference Include="CronExpressionDescriptor" Version="2.51.0" />
     <PackageReference Include="Sphere10.HashLib4CSharp" Version="3.1.2" />
     <PackageReference Include="Tomlyn" Version="2.10.1" />

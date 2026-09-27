@@ -42,6 +42,7 @@ var checks = new (string Name, Action Run)[]
     ("JWT decoding", CheckJwt),
     ("RSA key generation", CheckRsa),
     ("private text hashes", CheckTextHashes),
+    ("bcrypt", CheckBcrypt),
     ("password strength", CheckPasswordStrength),
     ("bounded math", CheckBoundedMath),
     ("film reciprocity", CheckFilmReciprocity),
@@ -313,6 +314,15 @@ static void CheckTextHashes()
     Equal("18587dc2ea106b9a1563e32b3312421ca164c7f1f07bc922a9c83d77cea3a1e5d0c69910739025372dc14ac9642629379540c17e2a65b19d77aa511a9d00bb96", TextHashes.Hash("abc", "SHA3"));
     Equal("9c196e32dc0175f86f4b1cb89289d6619de6bee699e4c378e68309ed97a1a6ab", TextHashes.Hmac("abc", "key", "SHA256"));
     Equal("ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0", TextHashes.Hash("abc", "SHA256", "Base64url"));
+}
+
+static void CheckBcrypt()
+{
+    const string bcryptJsHash = "$2b$04$abcdefghijklmnopqrstuuSOK8qq7pwSzIsE/gr5lck387Zp7ucXu";
+    Equal(true, PasswordBcrypt.Verify("private", bcryptJsHash));
+    Equal(false, PasswordBcrypt.Verify("wrong", bcryptJsHash));
+    var hash = PasswordBcrypt.Hash("private", 4);
+    Equal(true, PasswordBcrypt.Verify("private", hash));
 }
 
 static void CheckPasswordStrength()

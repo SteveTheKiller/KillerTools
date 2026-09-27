@@ -1,6 +1,7 @@
 {
   "arabic_to_roman": "verified",
   "analyze_password_private": "verified",
+  "bcrypt_private": "verified",
   "ascii_binary_to_text": "verified",
   "calculate_percentage": "verified",
   "calculate_reciprocity": "verified",

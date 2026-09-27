@@ -81,7 +81,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'otp_private', 'generate_otp_secret_private',
   'generate_ulids', 'generate_uuids', 'generate_lorem_ipsum',
   'parse_jwt_private',
-  'generate_rsa_keypair_private', 'hash_text_private', 'hmac_private',
+  'generate_rsa_keypair_private', 'hash_text_private', 'hmac_private', 'bcrypt_private',
   'analyze_password_private',
   'evaluate_math',
   'list_film_stocks', 'calculate_reciprocity',
@@ -177,6 +177,9 @@ const jwt = await request('tools/call', { name: 'parse_jwt_private', arguments: 
 assert.equal(JSON.parse(jwt.content[0].text).signatureVerified, false);
 const hash = await request('tools/call', { name: 'hash_text_private', arguments: { value: 'abc' } });
 assert.equal(JSON.parse(hash.content[0].text).hash, 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+const bcryptHash = await request('tools/call', { name: 'bcrypt_private', arguments: { value: 'private', action: 'hash', rounds: 4 } });
+const bcryptCompare = await request('tools/call', { name: 'bcrypt_private', arguments: { value: 'private', action: 'compare', hash: JSON.parse(bcryptHash.content[0].text).hash } });
+assert.equal(JSON.parse(bcryptCompare.content[0].text).matches, true);
 const rsa = await request('tools/call', { name: 'generate_rsa_keypair_private', arguments: { bits: '2048' } });
 const rsaPair = JSON.parse(rsa.content[0].text);
 assert.match(rsaPair.publicKeyPem, /BEGIN PUBLIC KEY/);
