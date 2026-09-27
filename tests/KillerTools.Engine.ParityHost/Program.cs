@@ -38,6 +38,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "convert_temperature" => Temperatures.Convert(arguments.GetProperty("value").GetDouble(), arguments.GetProperty("scale").GetString()!),
         "calculate_chmod" => ChmodResult(arguments),
         "generate_svg_placeholder" => SvgResult(arguments),
+        "generate_qr_code" => QrResult(arguments),
         "calculate_nd_exposure" => new { seconds = ExposureCalculators.WithNeutralDensity(arguments.GetProperty("baseSeconds").GetDouble(), arguments.GetProperty("stops").GetDouble()) },
         "calculate_exposure_equivalence" => new { shutterSeconds = ExposureCalculators.EquivalentShutter(arguments.GetProperty("shutterSeconds").GetDouble(), arguments.GetProperty("originalAperture").GetDouble(), arguments.GetProperty("targetAperture").GetDouble()) },
         "calculate_depth_of_field" => DepthOfFieldResult(arguments),
@@ -392,6 +393,21 @@ static object SvgResult(JsonElement arguments)
 {
     var svg = SvgPlaceholder.Build(arguments.GetProperty("width").GetInt32(), arguments.GetProperty("height").GetInt32(), arguments.GetProperty("fontSize").GetInt32(), arguments.GetProperty("bgColor").GetString()!, arguments.GetProperty("fgColor").GetString()!, arguments.GetProperty("useExactSize").GetBoolean(), arguments.GetProperty("customText").GetString()!);
     return new { svg, dataUrl = $"data:image/svg+xml;base64,{Base64Text.Encode(svg)}" };
+}
+
+static object QrResult(JsonElement arguments)
+{
+    var mode = arguments.GetProperty("mode").GetString();
+    var value = mode == "text" ? arguments.GetProperty("text").GetString()! : QrCodes.BuildWifiText(new WifiQrOptions(
+        arguments.GetProperty("wifi").GetProperty("ssid").GetString()!,
+        arguments.GetProperty("wifi").GetProperty("password").GetString()!,
+        arguments.GetProperty("wifi").GetProperty("encryption").GetString()!,
+        arguments.GetProperty("wifi").GetProperty("eapMethod").ValueKind == JsonValueKind.Null ? null : arguments.GetProperty("wifi").GetProperty("eapMethod").GetString(),
+        arguments.GetProperty("wifi").GetProperty("isHiddenSSID").GetBoolean(),
+        arguments.GetProperty("wifi").GetProperty("eapAnonymous").GetBoolean(),
+        arguments.GetProperty("wifi").GetProperty("eapIdentity").GetString()!,
+        arguments.GetProperty("wifi").GetProperty("eapPhase2Method").ValueKind == JsonValueKind.Null ? null : arguments.GetProperty("wifi").GetProperty("eapPhase2Method").GetString()));
+    return new { svg = QrCodes.GenerateSvg(value, arguments.GetProperty("foreground").GetString()!, arguments.GetProperty("background").GetString()!, arguments.GetProperty("errorCorrectionLevel").GetString()!) };
 }
 
 Console.Write(JsonSerializer.Serialize(output));

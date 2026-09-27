@@ -77,7 +77,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'open_browser_companion_local', 'get_browser_device_information_local', 'get_browser_keycode_local',
   'get_browser_html_local', 'get_browser_signature_local', 'get_browser_camera_local',
   'describe_cron', 'calculate_nd_exposure', 'calculate_exposure_equivalence',
-  'calculate_depth_of_field', 'generate_svg_placeholder', 'calculate_chmod',
+  'calculate_depth_of_field', 'generate_svg_placeholder', 'generate_qr_code', 'calculate_chmod',
   'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv',
   'parse_url', 'parse_user_agent', 'lookup_domain_dns', 'lookup_domain_rdap', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers',
   'test_regex',
@@ -138,6 +138,11 @@ assert.equal(invalidJson.isError, true);
 const parsedUserAgent = JSON.parse((await request('tools/call', { name: 'parse_user_agent', arguments: { userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } })).content[0].text);
 assert.equal(parsedUserAgent.browser.name, 'Chrome');
 assert.equal(parsedUserAgent.engine.name, 'Blink');
+const qrCode = JSON.parse((await request('tools/call', { name: 'generate_qr_code', arguments: { mode: 'text', text: 'https://killertools.net' } })).content[0].text);
+assert.match(qrCode.svg, /^<svg/);
+assert.match(qrCode.svg, /width="256"/);
+const wifiQr = await request('tools/call', { name: 'generate_qr_code', arguments: { mode: 'wifi', wifi: { ssid: 'Example', password: 'secret', encryption: 'WPA' } } });
+assert.equal(wifiQr.isError, undefined);
 const xmlJson = await request('tools/call', { name: 'convert_xml_json', arguments: { text: '<a x="1"/>', direction: 'xml_to_json' } });
 assert.match(JSON.parse(xmlJson.content[0].text).text, /"_attributes"/);
 const formattedXml = await request('tools/call', { name: 'format_xml', arguments: { text: '<a><b>text</b></a>' } });

@@ -43,6 +43,7 @@
   "generate_dmarc_record": "verified",
   "generate_spf_record": "verified",
   "generate_svg_placeholder": "verified",
+  "generate_qr_code": "verified",
   "json_to_csv": "verified",
   "list_killer_modules": "verified",
   "list_killer_scripts": "verified",

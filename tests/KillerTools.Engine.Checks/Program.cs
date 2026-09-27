@@ -25,6 +25,7 @@ var checks = new (string Name, Action Run)[]
     ("RDAP lookup", CheckRdapLookup),
     ("URL and CSV conversions", CheckUrlAndCsv),
     ("user agent parsing", CheckUserAgentParsing),
+    ("QR code generation", CheckQrCodes),
     ("JSON5 formatting and diff", CheckStructuredJson),
     ("XML and JSON conversion", CheckXmlJson),
     ("YAML and TOML conversion", CheckYamlToml),
@@ -88,6 +89,16 @@ static void CheckUserAgentParsing()
     Equal("Windows", chrome.Os["name"]);
     Equal("amd64", chrome.Cpu["architecture"]);
     Equal(0, UserAgentParser.Parse("curl/8.5.0").Browser.Count);
+}
+
+static void CheckQrCodes()
+{
+    Equal("WIFI:S:Example;T:WPA;P:sec\\;ret;H:true;", QrCodes.BuildWifiText(new WifiQrOptions("Example", "sec;ret", "WPA", null, true, false, "", null)));
+    Equal("", QrCodes.BuildWifiText(new WifiQrOptions("Example", "secret", "WPA2-EAP", "PEAP", false, false, "", null)));
+    var svg = QrCodes.GenerateSvg("https://killertools.net", "#112233", "#fefefe", "high");
+    Equal(true, svg.StartsWith("<svg", StringComparison.Ordinal));
+    Equal(true, svg.Contains("width=\"256\"", StringComparison.Ordinal));
+    Equal(true, svg.Contains("#112233", StringComparison.Ordinal));
 }
 
 static void CheckCaseConversions()

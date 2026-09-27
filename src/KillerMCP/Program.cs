@@ -127,6 +127,7 @@ static class ToolRegistry
         Tool("calculate_exposure_equivalence", "Calculate equivalent shutter speed after an aperture change.", new { shutterSeconds = NumberSchema(), originalAperture = NumberSchema(), targetAperture = NumberSchema() }, ["shutterSeconds", "originalAperture", "targetAperture"]),
         Tool("calculate_depth_of_field", "Calculate depth of field.", new { focalLengthMm = NumberSchema(), aperture = NumberSchema(), focusDistance = NumberSchema(), focusUnit = EnumSchema("m", "ft"), circleOfConfusionMm = NumberSchema() }, ["focalLengthMm", "aperture", "focusDistance", "focusUnit", "circleOfConfusionMm"]),
         Tool("generate_svg_placeholder", "Generate an SVG placeholder image.", new { width = IntegerSchema(1, 4096), height = IntegerSchema(1, 4096), fontSize = new { type = "integer", minimum = 1, maximum = 512, @default = 26 }, bgColor = new { type = "string", pattern = "^#[0-9a-f]{6}$", @default = "#cccccc" }, fgColor = new { type = "string", pattern = "^#[0-9a-f]{6}$", @default = "#333333" }, useExactSize = BooleanSchema(true), customText = new { type = "string", maxLength = 256, @default = "" } }, ["width", "height"]),
+        Tool("generate_qr_code", "Generate a QR code as SVG for text or Wi-Fi using KillerTools QR code logic. Wi-Fi credentials are part of the encoded output.", new { mode = EnumSchema("text", "wifi"), text = new { type = "string", minLength = 1, maxLength = 1024 }, wifi = WifiQrSchema(), foreground = new { type = "string", pattern = "^#[0-9a-f]{6}$", @default = "#000000" }, background = new { type = "string", pattern = "^#[0-9a-f]{6}$", @default = "#ffffff" }, errorCorrectionLevel = new { type = "string", @enum = new[] { "low", "medium", "quartile", "high" }, @default = "medium" } }, ["mode"]),
         Tool("calculate_chmod", "Calculate octal and symbolic Unix permissions.", new { permissions = PermissionSetSchema() }, ["permissions"]),
         Tool("expand_ipv4_range", "Find the smallest covering CIDR block for an IPv4 address range.", new { startIp = new { type = "string", maxLength = 15 }, endIp = new { type = "string", maxLength = 15 } }, ["startIp", "endIp"]),
         Tool("calculate_ipv4_subnet", "Calculate IPv4 network information.", new { address = new { type = "string", minLength = 1, maxLength = 32 } }, ["address"]),
@@ -239,6 +240,7 @@ static class ToolRegistry
             "calculate_exposure_equivalence" => new { shutterSeconds = ExposureCalculators.EquivalentShutter(arguments.GetProperty("shutterSeconds").GetDouble(), arguments.GetProperty("originalAperture").GetDouble(), arguments.GetProperty("targetAperture").GetDouble()) },
             "calculate_depth_of_field" => ExposureCalculators.DepthOfField(arguments.GetProperty("focalLengthMm").GetDouble(), arguments.GetProperty("aperture").GetDouble(), arguments.GetProperty("focusDistance").GetDouble(), arguments.GetProperty("focusUnit").GetString()!, arguments.GetProperty("circleOfConfusionMm").GetDouble()),
             "generate_svg_placeholder" => Svg(arguments),
+            "generate_qr_code" => Qr(arguments),
             "calculate_chmod" => Chmod(arguments),
             "expand_ipv4_range" => Ipv4Tools.CoverRange(arguments.GetProperty("startIp").GetString()!, arguments.GetProperty("endIp").GetString()!),
             "calculate_ipv4_subnet" => Ipv4Subnet(arguments),
@@ -299,6 +301,23 @@ static class ToolRegistry
         var group = new { type = "object", properties = new { read = new { type = "boolean" }, write = new { type = "boolean" }, execute = new { type = "boolean" } }, required = new[] { "read", "write", "execute" }, additionalProperties = false };
         return new { type = "object", properties = new { owner = group, group, @public = group }, required = new[] { "owner", "group", "public" }, additionalProperties = false };
     }
+    private static object WifiQrSchema() => new
+    {
+        type = "object",
+        properties = new
+        {
+            ssid = new { type = "string", minLength = 1, maxLength = 128 },
+            password = new { type = "string", maxLength = 128, @default = "" },
+            encryption = new { type = "string", @enum = new[] { "nopass", "WPA", "WEP", "WPA2-EAP" }, @default = "WPA" },
+            eapMethod = new { type = new[] { "string", "null" }, @enum = new string?[] { null, "MD5", "POTP", "GTC", "TLS", "IKEv2", "SIM", "AKA", "AKA'", "TTLS", "PWD", "LEAP", "PSK", "FAST", "TEAP", "EKE", "NOOB", "PEAP" }, @default = (string?)null },
+            isHiddenSSID = BooleanSchema(false),
+            eapAnonymous = BooleanSchema(false),
+            eapIdentity = new { type = "string", maxLength = 128, @default = "" },
+            eapPhase2Method = new { type = new[] { "string", "null" }, @enum = new string?[] { null, "None", "MSCHAPV2" }, @default = (string?)null },
+        },
+        required = new[] { "ssid" },
+        additionalProperties = false,
+    };
     private static bool OptionalBoolean(JsonElement arguments, string name, bool defaultValue = false) => arguments.TryGetProperty(name, out var value) ? value.GetBoolean() : defaultValue;
     private static string OptionalString(JsonElement arguments, string name, string defaultValue) => arguments.TryGetProperty(name, out var value) ? value.GetString()! : defaultValue;
     private static int OptionalInteger(JsonElement arguments, string name, int defaultValue) => arguments.TryGetProperty(name, out var value) ? value.GetInt32() : defaultValue;
@@ -350,6 +369,30 @@ static class ToolRegistry
         }
         catch (InvalidOperationException exception) { throw new ToolCallException(exception.Message); }
         catch (Exception) { throw new ToolCallException("Unable to generate password"); }
+    }
+    private static object Qr(JsonElement arguments)
+    {
+        try
+        {
+            string? value = null;
+            if (arguments.GetProperty("mode").GetString() == "text") value = OptionalNullableString(arguments, "text");
+            else if (arguments.TryGetProperty("wifi", out var wifi))
+            {
+                value = QrCodes.BuildWifiText(new WifiQrOptions(
+                    wifi.GetProperty("ssid").GetString()!,
+                    OptionalString(wifi, "password", ""),
+                    OptionalString(wifi, "encryption", "WPA"),
+                    OptionalNullableString(wifi, "eapMethod"),
+                    OptionalBoolean(wifi, "isHiddenSSID"),
+                    OptionalBoolean(wifi, "eapAnonymous"),
+                    OptionalString(wifi, "eapIdentity", ""),
+                    OptionalNullableString(wifi, "eapPhase2Method")));
+            }
+            if (string.IsNullOrEmpty(value)) throw new ToolCallException("Missing or invalid QR content");
+            return new { svg = QrCodes.GenerateSvg(value, OptionalString(arguments, "foreground", "#000000"), OptionalString(arguments, "background", "#ffffff"), OptionalString(arguments, "errorCorrectionLevel", "medium")) };
+        }
+        catch (ToolCallException) { throw; }
+        catch { throw new ToolCallException("Unable to generate QR code within output limit"); }
     }
     private static object Bip39Result(JsonElement arguments)
     {
