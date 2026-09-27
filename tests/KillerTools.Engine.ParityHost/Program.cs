@@ -44,9 +44,46 @@ foreach (var request in input.RootElement.EnumerateArray())
         "generate_ipv6_ula" => Ipv6UlaResult(arguments),
         "json_to_csv" => new { csv = JsonCsv.Convert(arguments.GetProperty("rows")) },
         "parse_url" => UrlResult(arguments),
+        "generate_spf_record" => SpfResult(arguments),
+        "generate_dmarc_record" => DmarcResult(arguments),
+        "parse_email_headers" => EmailHeadersResult(arguments),
         _ => throw new InvalidOperationException($"Unknown parity operation: {operation}"),
     });
 }
+
+static object EmailHeadersResult(JsonElement arguments)
+{
+    var value = EmailHeaderParser.Parse(arguments.GetProperty("headers").GetString()!);
+    return new
+    {
+        fields = value.Fields.Select(field => new { label = field.Label, value = field.Value }),
+        hops = value.Hops.Select(hop => new { from = hop.From, by = hop.By, ip = hop.Ip, timestamp = hop.Timestamp, delay = hop.Delay }),
+        auth = value.Auth.Select(auth => new { protocol = auth.Protocol, result = auth.Result, detail = auth.Detail }),
+        spamScore = value.SpamScore,
+        spamStatus = value.SpamStatus,
+        scl = value.Scl,
+        sclLabel = value.SclLabel,
+        senderMismatch = value.SenderMismatch,
+        sendingService = value.SendingService,
+    };
+}
+
+static object SpfResult(JsonElement arguments) => new
+{
+    record = EmailRecords.BuildSpf(
+        arguments.GetProperty("providers").EnumerateArray().Select(value => value.GetString()!),
+        arguments.GetProperty("ipAddresses").EnumerateArray().Select(value => value.GetString()!),
+        arguments.GetProperty("enforcement").GetString()!)
+};
+
+static object DmarcResult(JsonElement arguments) => new
+{
+    record = EmailRecords.BuildDmarc(
+        arguments.GetProperty("policy").GetString()!, arguments.GetProperty("subdomainPolicy").GetString()!, arguments.GetProperty("percentage").GetInt32(),
+        arguments.GetProperty("ruaEmails").EnumerateArray().Select(value => value.GetString()!),
+        arguments.GetProperty("rufEmails").EnumerateArray().Select(value => value.GetString()!),
+        arguments.GetProperty("adkim").GetString()!, arguments.GetProperty("aspf").GetString()!)
+};
 
 static object UrlResult(JsonElement arguments)
 {

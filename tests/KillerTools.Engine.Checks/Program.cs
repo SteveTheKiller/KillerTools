@@ -15,6 +15,8 @@ var checks = new (string Name, Action Run)[]
     ("HTML entities and text diff", CheckHtmlAndDiff),
     ("IP network calculations", CheckNetworkCalculations),
     ("URL and CSV conversions", CheckUrlAndCsv),
+    ("email records", CheckEmailRecords),
+    ("email headers", CheckEmailHeaders),
     ("portable utilities", CheckPortableUtilities),
 };
 
@@ -22,6 +24,20 @@ foreach (var check in checks)
 {
     check.Run();
     Console.WriteLine($"PASS {check.Name}");
+}
+
+static void CheckEmailHeaders()
+{
+    var parsed = EmailHeaderParser.Parse("From: Sender <sender@example.com>\r\nSender: relay@other.example\r\nAuthentication-Results: mx.example; spf=pass smtp.mailfrom=example.com; dkim=fail header.d=example.com\r\nX-MS-Exchange-Organization-SCL: 5");
+    Equal(true, parsed.SenderMismatch);
+    Equal("Spam", parsed.SclLabel);
+    Equal(2, parsed.Auth.Count);
+}
+
+static void CheckEmailRecords()
+{
+    Equal("v=spf1 include:_spf.google.com ip4:192.0.2.0/24 ip6:2001:db8::/32 -all", EmailRecords.BuildSpf(["include:_spf.google.com"], ["192.0.2.0/24", "2001:db8::/32"], "-all"));
+    Equal("v=DMARC1; p=quarantine; sp=reject; pct=50; rua=mailto:reports@example.com; adkim=s", EmailRecords.BuildDmarc("quarantine", "reject", 50, ["reports@example.com"], [], "s", ""));
 }
 
 static void CheckUrlAndCsv()

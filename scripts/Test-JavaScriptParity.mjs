@@ -61,9 +61,14 @@ const requests = [
   { operation: 'json_to_csv', arguments: { rows: [{ text: 'line 1\nline 2', active: true, nested: { a: 1 } }] } },
   { operation: 'parse_url', arguments: { url: 'https://user:pass@example.com:8443/a%20b?x=1&x=two+words#top' } },
   { operation: 'parse_url', arguments: { url: 'http://example.com/' } },
+  { operation: 'generate_spf_record', arguments: { providers: ['include:_spf.google.com', 'include:_spf.google.com'], ipAddresses: ['192.0.2.0/24', '2001:db8::/32'], enforcement: '-all' } },
+  { operation: 'generate_spf_record', arguments: { providers: [], ipAddresses: [], enforcement: '~all' } },
+  { operation: 'generate_dmarc_record', arguments: { policy: 'quarantine', subdomainPolicy: 'reject', percentage: 50, ruaEmails: ['reports@example.com'], rufEmails: [], adkim: 's', aspf: '' } },
+  { operation: 'generate_dmarc_record', arguments: { policy: 'none', subdomainPolicy: '', percentage: 100, ruaEmails: [], rufEmails: ['forensic@example.com'], adkim: '', aspf: 's' } },
+  { operation: 'parse_email_headers', arguments: { headers: 'From: Sender <sender@example.com>\r\nSender: relay@other.example\r\nTo: User <user@example.net>\r\nReceived: from mail.example.com (mail.example.com [192.0.2.5]) by mx.example.net; Tue, 1 Jan 2025 12:00:10 +0000\r\nReceived: from client.example.com [198.51.100.9] by mail.example.com; Tue, 1 Jan 2025 12:00:00 +0000\r\nAuthentication-Results: mx.example; spf=pass smtp.mailfrom=example.com; dkim=fail header.d=example.com\r\nX-MS-Exchange-Organization-SCL: 5' } },
 ];
 
-const oracleOperations = new Set(['calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv', 'parse_url']);
+const oracleOperations = new Set(['calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv', 'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers']);
 const oracle = spawn(process.execPath, [resolve(site, 'mcp/dist/killermcp.mjs')], { cwd: resolve(site, 'mcp'), stdio: ['pipe', 'pipe', 'pipe'] });
 let oracleBuffer = '';
 let oracleError = '';
@@ -156,4 +161,4 @@ if (run.status !== 0) {
 }
 
 assert.deepEqual(JSON.parse(run.stdout), expected);
-console.log(`${requests.length} live JavaScript parity cases passed for 24 native operations.`);
+console.log(`${requests.length} live JavaScript parity cases passed for 27 native operations.`);
