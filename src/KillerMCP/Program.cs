@@ -89,6 +89,7 @@ static class ToolRegistry
         Tool("generate_uuids", "Generate up to 100 UUIDs.", new { version = EnumSchema("NIL", "v1", "v3", "v4", "v5"), count = new { type = "integer", minimum = 1, maximum = 100, @default = 1 }, name = new { type = "string", maxLength = 128 }, @namespace = new { type = "string", maxLength = 36 } }, []),
         Tool("parse_jwt_private", "Decode a JWT locally without claiming to verify its signature.", new { token = new { type = "string", minLength = 3, maxLength = 16_384 } }, ["token"]),
         Tool("generate_rsa_keypair_private", "Generate an RSA PEM key pair locally.", new { bits = EnumSchema("2048", "3072", "4096") }, []),
+        Tool("analyze_password_private", "Estimate password strength and crack time locally.", new { password = new { type = "string", maxLength = 8192 } }, ["password"]),
     ];
 
     public static object Call(JsonElement parameters, JsonSerializerOptions json)
@@ -144,6 +145,7 @@ static class ToolRegistry
             "generate_uuids" => Uuids(arguments),
             "parse_jwt_private" => Jwt(arguments),
             "generate_rsa_keypair_private" => RsaKeyPairs.Generate(int.Parse(OptionalString(arguments, "bits", "2048"), System.Globalization.CultureInfo.InvariantCulture)),
+            "analyze_password_private" => PasswordStrength.Analyze(arguments.GetProperty("password").GetString()!),
             _ => throw new InvalidOperationException($"Unknown tool: {name}"),
             };
             return new { content = new[] { new { type = "text", text = JsonSerializer.Serialize(value, json) } } };

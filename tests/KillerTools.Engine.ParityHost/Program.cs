@@ -64,6 +64,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "otp_private" => OtpResult(arguments),
         "generate_uuids" => new { ids = IdentifierGenerators.GenerateUuids(arguments.GetProperty("version").GetString()!, arguments.GetProperty("count").GetInt32(), arguments.TryGetProperty("name", out var name) ? name.GetString() : null, arguments.TryGetProperty("namespace", out var namespaceValue) ? namespaceValue.GetString() : null) },
         "parse_jwt_private" => JwtResult(arguments),
+        "analyze_password_private" => PasswordStrengthResult(arguments),
         _ => throw new InvalidOperationException($"Unknown parity operation: {operation}"),
     });
 }
@@ -95,6 +96,12 @@ static object JwtResult(JsonElement arguments)
 {
     var value = JwtParser.Decode(arguments.GetProperty("token").GetString()!);
     return new { header = value.Header, payload = value.Payload, headerClaims = value.HeaderClaims, payloadClaims = value.PayloadClaims, signatureVerified = value.SignatureVerified };
+}
+
+static object PasswordStrengthResult(JsonElement arguments)
+{
+    var value = PasswordStrength.Analyze(arguments.GetProperty("password").GetString()!);
+    return new { entropy = value.Entropy, charsetLength = value.CharsetLength, passwordLength = value.PasswordLength, crackDurationFormatted = value.CrackDurationFormatted, secondsToCrack = value.SecondsToCrack, score = value.Score };
 }
 
 static object MicrosoftReferenceResult(string operation, JsonElement arguments)

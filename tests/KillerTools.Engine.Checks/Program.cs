@@ -33,6 +33,7 @@ var checks = new (string Name, Action Run)[]
     ("identifier generators", CheckIdentifierGenerators),
     ("JWT decoding", CheckJwt),
     ("RSA key generation", CheckRsa),
+    ("password strength", CheckPasswordStrength),
 };
 
 foreach (var check in checks)
@@ -224,6 +225,17 @@ static void CheckRsa()
     using var rsa = System.Security.Cryptography.RSA.Create();
     rsa.ImportFromPem(pair.PrivateKeyPem);
     Equal(2048, rsa.KeySize);
+}
+
+static void CheckPasswordStrength()
+{
+    Equal(26, PasswordStrength.GetCharsetLength("abcdefghijklmnopqrstuvwxyz"));
+    Equal(94, PasswordStrength.GetCharsetLength("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"));
+    var result = PasswordStrength.Analyze("Secret123!");
+    Equal(94, result.CharsetLength);
+    Equal(10, result.PasswordLength);
+    Equal(true, result.Entropy > 0);
+    Equal(true, result.CrackDurationFormatted.Length > 0);
 }
 
 static void CheckHtmlAndDiff()
