@@ -86,6 +86,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "hash_text_private" => new { hash = TextHashes.Hash(arguments.GetProperty("value").GetString()!, arguments.GetProperty("algorithm").GetString()!, arguments.GetProperty("encoding").GetString()!) },
         "hmac_private" => new { hmac = TextHashes.Hmac(arguments.GetProperty("value").GetString()!, arguments.GetProperty("secret").GetString()!, arguments.GetProperty("algorithm").GetString()!, arguments.GetProperty("encoding").GetString()!) },
         "bcrypt_private" => new { matches = PasswordBcrypt.Verify(arguments.GetProperty("value").GetString()!, arguments.GetProperty("hash").GetString()!) },
+        "generate_password_private" => PasswordResult(arguments),
         "analyze_password_private" => PasswordStrengthResult(arguments),
         "evaluate_math" => new { value = BoundedMath.Evaluate(arguments.GetProperty("expression").GetString()!) },
         "list_film_stocks" => FilmReciprocity.List().Select(stock => new { id = stock.Id, name = stock.Name, manufacturer = stock.Manufacturer, iso = stock.Iso, type = stock.Type }),
@@ -288,6 +289,19 @@ static object GifResult(JsonElement arguments)
     {
         return new { error = "GIF search is unavailable" };
     }
+}
+
+static object PasswordResult(JsonElement arguments)
+{
+    var mode = arguments.GetProperty("mode").GetString()!;
+    var password = mode switch
+    {
+        "passphrase" => PasswordGenerator.GeneratePassphrase(arguments.GetProperty("wordCount").GetInt32(), arguments.GetProperty("wordSeparator").GetString()!, arguments.GetProperty("capitalizeWords").GetBoolean(), arguments.GetProperty("appendNumber").GetBoolean()),
+        "pronounceable" => PasswordGenerator.GeneratePronounceable(arguments.GetProperty("length").GetInt32(), arguments.GetProperty("appendNumber").GetBoolean()),
+        "format" => PasswordGenerator.GenerateFormatted(arguments.GetProperty("length").GetInt32(), arguments.GetProperty("format").GetString()!),
+        _ => PasswordGenerator.GenerateRandom(arguments.GetProperty("length").GetInt32(), arguments.GetProperty("uppercase").GetBoolean(), arguments.GetProperty("lowercase").GetBoolean(), arguments.GetProperty("numbers").GetBoolean(), arguments.GetProperty("symbols").GetBoolean(), arguments.GetProperty("excludeAmbiguous").GetBoolean(), arguments.GetProperty("requireOneOfEach").GetBoolean()),
+    };
+    return new { password };
 }
 
 static object Ipv4RangeResult(JsonElement arguments)

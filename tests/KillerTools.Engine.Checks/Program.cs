@@ -48,6 +48,7 @@ var checks = new (string Name, Action Run)[]
     ("private text hashes", CheckTextHashes),
     ("bcrypt", CheckBcrypt),
     ("password strength", CheckPasswordStrength),
+    ("password generation", CheckPasswordGeneration),
     ("bounded math", CheckBoundedMath),
     ("film reciprocity", CheckFilmReciprocity),
     ("film development", CheckFilmDevelopment),
@@ -362,6 +363,25 @@ static void CheckPasswordStrength()
     Equal(10, result.PasswordLength);
     Equal(true, result.Entropy > 0);
     Equal(true, result.CrackDurationFormatted.Length > 0);
+}
+
+static void CheckPasswordGeneration()
+{
+    Equal(7776, PasswordGenerator.WordCount);
+    var random = PasswordGenerator.GenerateRandom(32, true, true, true, true, true, true);
+    Equal(32, random.Length);
+    Equal(true, random.Any(char.IsUpper));
+    Equal(true, random.Any(char.IsLower));
+    Equal(true, random.Any(char.IsDigit));
+    Equal(true, random.Any(character => "!@#$%^&*()-_=+<>?".Contains(character)));
+    Equal(false, random.Any(character => "0O1lI|`'\".,;:{}[]()\\/".Contains(character)));
+    var passphrase = PasswordGenerator.GeneratePassphrase(6, "-", true, true).Split('-');
+    Equal(7, passphrase.Length);
+    Equal(true, passphrase.Take(6).All(word => char.IsUpper(word[0])));
+    Equal(true, passphrase[6].Length == 2 && passphrase[6].All(char.IsDigit));
+    Equal(true, System.Text.RegularExpressions.Regex.IsMatch(PasswordGenerator.GeneratePronounceable(20, true), "^[bcdfghjkmnpqrstvwxz][aeiouy](?:[bcdfghjkmnpqrstvwxz][aeiouy]){8}[0-9]{2}$"));
+    Equal(true, System.Text.RegularExpressions.Regex.IsMatch(PasswordGenerator.GenerateFormatted(20, "hex"), "^[0-9a-f]{20}$"));
+    Equal(true, Guid.TryParse(PasswordGenerator.GenerateFormatted(20, "uuid"), out _));
 }
 
 static void CheckBoundedMath()

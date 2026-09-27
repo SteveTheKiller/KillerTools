@@ -149,6 +149,7 @@ static class ToolRegistry
         Tool("hmac_private", "Calculate an HMAC locally using the KillerTools hash algorithms.", new { value = new { type = "string", maxLength = 8192 }, secret = new { type = "string", maxLength = 8192 }, algorithm = EnumSchema("MD5", "RIPEMD160", "SHA1", "SHA3", "SHA224", "SHA256", "SHA384", "SHA512"), encoding = EnumSchema("Bin", "Hex", "Base64", "Base64url") }, ["value", "secret"]),
         Tool("bcrypt_private", "Hash or compare a string with bcrypt locally.", new { value = new { type = "string", maxLength = 8192 }, action = EnumSchema("hash", "compare"), rounds = new { type = "integer", minimum = 4, maximum = 14, @default = 10 }, hash = new { type = "string", maxLength = 128 } }, ["value", "action"]),
         Tool("analyze_password_private", "Estimate password strength and crack time locally.", new { password = new { type = "string", maxLength = 8192 } }, ["password"]),
+        Tool("generate_password_private", "Generate a password or passphrase locally with the KillerTools modes.", new { mode = EnumSchema("random", "passphrase", "pronounceable", "format"), length = new { type = "integer", minimum = 8, maximum = 128, @default = 20 }, uppercase = BooleanSchema(true), lowercase = BooleanSchema(true), numbers = BooleanSchema(true), symbols = BooleanSchema(true), excludeAmbiguous = BooleanSchema(true), requireOneOfEach = BooleanSchema(true), wordCount = new { type = "integer", minimum = 1, maximum = 16, @default = 6 }, wordSeparator = new { type = "string", maxLength = 8, @default = "-" }, capitalizeWords = BooleanSchema(true), appendNumber = BooleanSchema(false), format = EnumSchema("hex", "base64", "base64url", "uuid") }, []),
         Tool("evaluate_math", "Evaluate a bounded arithmetic expression.", new { expression = new { type = "string", minLength = 1, maxLength = 256 } }, ["expression"]),
         Tool("list_film_stocks", "List the film stocks available in KillerTools Reciprocity Calculator.", new { }, []),
         Tool("calculate_reciprocity", "Calculate reciprocity failure adjustment for a film stock.", new { filmStockId = new { type = "string", minLength = 1, maxLength = 64 }, meteredSeconds = new { type = "number", minimum = 0.0001, maximum = 3600 } }, ["filmStockId", "meteredSeconds"]),
@@ -255,6 +256,7 @@ static class ToolRegistry
             "hmac_private" => new { hmac = TextHashes.Hmac(arguments.GetProperty("value").GetString()!, arguments.GetProperty("secret").GetString()!, OptionalString(arguments, "algorithm", "SHA256"), OptionalString(arguments, "encoding", "Hex")) },
             "bcrypt_private" => Bcrypt(arguments),
             "analyze_password_private" => PasswordStrength.Analyze(arguments.GetProperty("password").GetString()!),
+            "generate_password_private" => GeneratePassword(arguments),
             "evaluate_math" => EvaluateMath(arguments),
             "list_film_stocks" => FilmReciprocity.List(),
             "calculate_reciprocity" => Reciprocity(arguments),
@@ -306,6 +308,23 @@ static class ToolRegistry
     {
         try { return Companion.Get(type); }
         catch (InvalidOperationException exception) { throw new ToolCallException(exception.Message); }
+    }
+    private static object GeneratePassword(JsonElement arguments)
+    {
+        try
+        {
+            var mode = OptionalString(arguments, "mode", "random");
+            var password = mode switch
+            {
+                "passphrase" => PasswordGenerator.GeneratePassphrase(OptionalInteger(arguments, "wordCount", 6), OptionalString(arguments, "wordSeparator", "-"), OptionalBoolean(arguments, "capitalizeWords", true), OptionalBoolean(arguments, "appendNumber")),
+                "pronounceable" => PasswordGenerator.GeneratePronounceable(OptionalInteger(arguments, "length", 20), OptionalBoolean(arguments, "appendNumber")),
+                "format" => PasswordGenerator.GenerateFormatted(OptionalInteger(arguments, "length", 20), OptionalString(arguments, "format", "hex")),
+                _ => PasswordGenerator.GenerateRandom(OptionalInteger(arguments, "length", 20), OptionalBoolean(arguments, "uppercase", true), OptionalBoolean(arguments, "lowercase", true), OptionalBoolean(arguments, "numbers", true), OptionalBoolean(arguments, "symbols", true), OptionalBoolean(arguments, "excludeAmbiguous", true), OptionalBoolean(arguments, "requireOneOfEach", true)),
+            };
+            return new { password };
+        }
+        catch (InvalidOperationException exception) { throw new ToolCallException(exception.Message); }
+        catch (Exception) { throw new ToolCallException("Unable to generate password"); }
     }
     private static string Locale(JsonElement arguments) => OptionalString(arguments, "locale", "en");
     private static object Localize<T>(string tool, IReadOnlyList<T> entries, string locale)

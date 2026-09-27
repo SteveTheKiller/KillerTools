@@ -99,6 +99,10 @@ const requests = [
   { operation: 'markdown_to_html', arguments: { markdown: '[link](https://example.com)\n\n> quoted `code`' } },
   { operation: 'markdown_to_html', arguments: { markdown: '```csharp\nConsole.WriteLine("hi");\n```' } },
   { operation: 'search_gifs', arguments: { query: 'killertools-parity-query-with-no-expected-results-4f7c2a', limit: 2 } },
+  { operation: 'generate_password_private', arguments: { mode: 'random', length: 20, uppercase: true, lowercase: true, numbers: true, symbols: true, excludeAmbiguous: true, requireOneOfEach: true, wordCount: 6, wordSeparator: '-', capitalizeWords: true, appendNumber: false, format: 'hex' } },
+  { operation: 'generate_password_private', arguments: { mode: 'pronounceable', length: 20, uppercase: true, lowercase: true, numbers: true, symbols: true, excludeAmbiguous: true, requireOneOfEach: true, wordCount: 6, wordSeparator: '-', capitalizeWords: true, appendNumber: true, format: 'hex' } },
+  { operation: 'generate_password_private', arguments: { mode: 'format', length: 20, uppercase: true, lowercase: true, numbers: true, symbols: true, excludeAmbiguous: true, requireOneOfEach: true, wordCount: 6, wordSeparator: '-', capitalizeWords: true, appendNumber: false, format: 'base64url' } },
+  { operation: 'generate_password_private', arguments: { mode: 'passphrase', length: 20, uppercase: true, lowercase: true, numbers: true, symbols: true, excludeAmbiguous: true, requireOneOfEach: true, wordCount: 4, wordSeparator: '.', capitalizeWords: false, appendNumber: true, format: 'hex' } },
   { operation: 'lookup_domain_dns', arguments: { name: 'nonexistent-killertools-parity.invalid', type: 'A' } },
   { operation: 'lookup_domain_rdap', arguments: { domain: 'example.com' } },
   { operation: 'generate_spf_record', arguments: { providers: ['include:_spf.google.com', 'include:_spf.google.com'], ipAddresses: ['192.0.2.0/24', '2001:db8::/32'], enforcement: '-all' } },
@@ -148,7 +152,7 @@ const requests = [
   { operation: 'calculate_film_development', arguments: { filmName: 'Ilford HP5 Plus', developerId: 'd76', dilutionIndex: 1, temperatureC: 24, pushPullStops: 1, tankMl: 501 } },
 ];
 
-const oracleOperations = new Set(['convert_date_time', 'calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'markdown_to_html', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'format_json', 'minify_json', 'diff_json', 'convert_xml_json', 'format_xml', 'convert_json', 'convert_yaml', 'convert_toml', 'format_yaml', 'generate_meta_tags', 'search_gifs', 'describe_cron', 'json_to_csv', 'parse_url', 'lookup_domain_dns', 'lookup_domain_rdap', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers', 'test_regex', 'lookup_http_status', 'lookup_port_protocol', 'lookup_exchange_ndr', 'lookup_m365_sku', 'lookup_windows_error', 'lookup_windows_event', 'lookup_group_policy', 'list_killer_modules', 'list_killer_scripts', 'encode_file_base64_local', 'otp_private', 'generate_uuids', 'generate_lorem_ipsum', 'parse_jwt_private', 'hash_text_private', 'hmac_private', 'bcrypt_private', 'analyze_password_private', 'evaluate_math', 'list_film_stocks', 'calculate_reciprocity', 'list_film_development_options', 'calculate_film_development']);
+const oracleOperations = new Set(['convert_date_time', 'calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'markdown_to_html', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'format_json', 'minify_json', 'diff_json', 'convert_xml_json', 'format_xml', 'convert_json', 'convert_yaml', 'convert_toml', 'format_yaml', 'generate_meta_tags', 'search_gifs', 'describe_cron', 'json_to_csv', 'parse_url', 'lookup_domain_dns', 'lookup_domain_rdap', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers', 'test_regex', 'lookup_http_status', 'lookup_port_protocol', 'lookup_exchange_ndr', 'lookup_m365_sku', 'lookup_windows_error', 'lookup_windows_event', 'lookup_group_policy', 'list_killer_modules', 'list_killer_scripts', 'encode_file_base64_local', 'otp_private', 'generate_uuids', 'generate_lorem_ipsum', 'parse_jwt_private', 'hash_text_private', 'hmac_private', 'bcrypt_private', 'generate_password_private', 'analyze_password_private', 'evaluate_math', 'list_film_stocks', 'calculate_reciprocity', 'list_film_development_options', 'calculate_film_development']);
 const oracle = spawn(process.execPath, [resolve(site, 'mcp/dist/killermcp.mjs')], { cwd: resolve(site, 'mcp'), stdio: ['pipe', 'pipe', 'pipe'] });
 let oracleBuffer = '';
 let oracleError = '';
@@ -247,9 +251,17 @@ if (run.status !== 0) {
 }
 
 function normalizeDynamicResults(values) {
-  return values.map((value, index) => requests[index].operation === 'lookup_domain_rdap'
-    ? { ...value, events: value.events.map(event => event.eventAction === 'last update of RDAP database' ? { ...event, eventDate: '<dynamic>' } : event) }
-    : value);
+  return values.map((value, index) => {
+    const request = requests[index];
+    if (request.operation === 'lookup_domain_rdap') return { ...value, events: value.events.map(event => event.eventAction === 'last update of RDAP database' ? { ...event, eventDate: '<dynamic>' } : event) };
+    if (request.operation !== 'generate_password_private') return value;
+    const password = value.password;
+    if (request.arguments.mode === 'random') return { valid: password.length === 20 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password) && !/[0O1lI|`'".,;:{}[\]()\\/]/.test(password) };
+    if (request.arguments.mode === 'pronounceable') return { valid: /^[bcdfghjkmnpqrstvwxz][aeiouy](?:[bcdfghjkmnpqrstvwxz][aeiouy]){8}[0-9]{2}$/.test(password) };
+    if (request.arguments.mode === 'format') return { valid: /^[A-Za-z0-9_-]{20}$/.test(password) };
+    const parts = password.split('.');
+    return { valid: parts.length === 5 && parts.slice(0, 4).every(part => /^[a-z]+$/.test(part)) && /^[0-9]{2}$/.test(parts[4]) };
+  });
 }
 
 assert.deepEqual(normalizeDynamicResults(JSON.parse(run.stdout)), normalizeDynamicResults(expected));

@@ -85,7 +85,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'generate_ulids', 'generate_uuids', 'generate_lorem_ipsum',
   'parse_jwt_private',
   'generate_rsa_keypair_private', 'hash_text_private', 'hmac_private', 'bcrypt_private',
-  'analyze_password_private',
+  'analyze_password_private', 'generate_password_private',
   'evaluate_math',
   'list_film_stocks', 'calculate_reciprocity',
   'list_film_development_options', 'calculate_film_development',
@@ -205,6 +205,15 @@ assert.equal(JSON.parse(jwt.content[0].text).signatureVerified, false);
 const hash = await request('tools/call', { name: 'hash_text_private', arguments: { value: 'abc' } });
 assert.equal(JSON.parse(hash.content[0].text).hash, 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
 const bcryptHash = await request('tools/call', { name: 'bcrypt_private', arguments: { value: 'private', action: 'hash', rounds: 4 } });
+const generatedPassword = JSON.parse((await request('tools/call', { name: 'generate_password_private', arguments: { mode: 'random', length: 32 } })).content[0].text).password;
+assert.equal(generatedPassword.length, 32);
+assert.match(generatedPassword, /[A-Z]/);
+assert.match(generatedPassword, /[a-z]/);
+assert.match(generatedPassword, /[0-9]/);
+const generatedPassphrase = JSON.parse((await request('tools/call', { name: 'generate_password_private', arguments: { mode: 'passphrase', wordCount: 6, appendNumber: true } })).content[0].text).password;
+assert.equal(generatedPassphrase.split('-').length, 7);
+const formattedPassword = JSON.parse((await request('tools/call', { name: 'generate_password_private', arguments: { mode: 'format', format: 'base64url', length: 24 } })).content[0].text).password;
+assert.match(formattedPassword, /^[A-Za-z0-9_-]{24}$/);
 const bcryptCompare = await request('tools/call', { name: 'bcrypt_private', arguments: { value: 'private', action: 'compare', hash: JSON.parse(bcryptHash.content[0].text).hash } });
 assert.equal(JSON.parse(bcryptCompare.content[0].text).matches, true);
 const rsa = await request('tools/call', { name: 'generate_rsa_keypair_private', arguments: { bits: '2048' } });

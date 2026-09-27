@@ -58,6 +58,7 @@
   "get_browser_html_local": "verified",
   "get_browser_keycode_local": "verified",
   "get_browser_signature_local": "verified",
+  "generate_password_private": "verified",
   "lookup_m365_sku": "verified",
   "lookup_port_protocol": "verified",
   "lookup_windows_error": "verified",
