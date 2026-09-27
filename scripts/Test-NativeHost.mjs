@@ -46,6 +46,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'otp_private', 'generate_otp_secret_private',
   'generate_ulids', 'generate_uuids',
   'parse_jwt_private',
+  'generate_rsa_keypair_private',
 ]);
 const called = await request('tools/call', { name: 'text_statistics', arguments: { text: 'hello world' } });
 assert.deepEqual(JSON.parse(called.content[0].text), { characterCount: 11, wordCount: 2, lineCount: 1, byteSize: 11 });
@@ -94,5 +95,9 @@ const uuids = await request('tools/call', { name: 'generate_uuids', arguments: {
 assert.deepEqual(JSON.parse(uuids.content[0].text).ids, ['cfbff0d1-9375-5685-968c-48ce8b15ae17']);
 const jwt = await request('tools/call', { name: 'parse_jwt_private', arguments: { token: 'eyJhbGciOiJub25lIn0.eyJzdWIiOiJsb2NhbCJ9.x' } });
 assert.equal(JSON.parse(jwt.content[0].text).signatureVerified, false);
+const rsa = await request('tools/call', { name: 'generate_rsa_keypair_private', arguments: { bits: '2048' } });
+const rsaPair = JSON.parse(rsa.content[0].text);
+assert.match(rsaPair.publicKeyPem, /BEGIN PUBLIC KEY/);
+assert.match(rsaPair.privateKeyPem, /BEGIN RSA PRIVATE KEY/);
 child.stdin.end();
 console.log('Native KillerMCP stdio handshake, tool listing, and tool call passed.');

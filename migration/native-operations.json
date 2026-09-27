@@ -21,6 +21,7 @@
   "generate_otp_secret_private": "verified",
   "generate_ulids": "verified",
   "generate_uuids": "verified",
+  "generate_rsa_keypair_private": "verified",
   "generate_dmarc_record": "verified",
   "generate_spf_record": "verified",
   "generate_svg_placeholder": "verified",

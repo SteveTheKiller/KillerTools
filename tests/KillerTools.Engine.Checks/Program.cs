@@ -32,6 +32,7 @@ var checks = new (string Name, Action Run)[]
     ("one-time passwords", CheckOtp),
     ("identifier generators", CheckIdentifierGenerators),
     ("JWT decoding", CheckJwt),
+    ("RSA key generation", CheckRsa),
 };
 
 foreach (var check in checks)
@@ -213,6 +214,16 @@ static void CheckJwt()
     Equal("local", result.Payload.GetProperty("sub").GetString());
     Equal("Subject", result.PayloadClaims.Single(claim => (string)claim["claim"]! == "sub")["claimDescription"]);
     Equal(false, result.SignatureVerified);
+}
+
+static void CheckRsa()
+{
+    var pair = RsaKeyPairs.Generate(2048);
+    Equal(true, pair.PublicKeyPem.Contains("BEGIN PUBLIC KEY", StringComparison.Ordinal));
+    Equal(true, pair.PrivateKeyPem.Contains("BEGIN RSA PRIVATE KEY", StringComparison.Ordinal));
+    using var rsa = System.Security.Cryptography.RSA.Create();
+    rsa.ImportFromPem(pair.PrivateKeyPem);
+    Equal(2048, rsa.KeySize);
 }
 
 static void CheckHtmlAndDiff()
