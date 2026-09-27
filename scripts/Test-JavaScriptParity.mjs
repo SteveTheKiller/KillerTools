@@ -48,6 +48,11 @@ const requests = [
   { operation: 'draw_ascii_text', arguments: { text: 'Hello World', font: 'Standard', width: 20 } },
   { operation: 'draw_ascii_text', arguments: { text: 'Killer Tools', font: 'Slant', width: 30 } },
   { operation: 'draw_ascii_text', arguments: { text: 'Killer', font: 'Circle', width: 20 } },
+  { operation: 'search_emoji', arguments: { query: 'grinning face', limit: 10 } },
+  { operation: 'search_emoji', arguments: { query: 'U+1F600', limit: 3 } },
+  { operation: 'search_emoji', arguments: { query: 'welsh', limit: 5 } },
+  { operation: 'search_emoji', arguments: { query: '^flag', limit: 10 } },
+  { operation: 'search_emoji', arguments: { query: 'grining', limit: 10 } },
   { operation: 'arabic_to_roman', arguments: { number: 1999 } },
   { operation: 'roman_to_arabic', arguments: { roman: 'MCMXCIX' } },
   { operation: 'text_to_nato_alphabet', arguments: { text: 'SOS 2' } },
@@ -187,6 +192,7 @@ oracleOperations.add('convert_color');
 oracleOperations.add('lookup_mac_vendor');
 oracleOperations.add('crypt_text_private');
 oracleOperations.add('draw_ascii_text');
+oracleOperations.add('search_emoji');
 let oracleBuffer = '';
 let oracleError = '';
 let nextId = 1;

@@ -32,6 +32,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "text_to_ascii_binary" => new { binary = AsciiBinary.Encode(arguments.GetProperty("text").GetString()!) },
         "ascii_binary_to_text" => new { text = AsciiBinary.Decode(arguments.GetProperty("binary").GetString()!) },
         "draw_ascii_text" => new { art = AsciiArt.Draw(arguments.GetProperty("text").GetString()!, arguments.GetProperty("font").GetString()!, arguments.GetProperty("width").GetInt32()) },
+        "search_emoji" => EmojiSearch.Search(arguments.GetProperty("query").GetString()!, arguments.GetProperty("limit").GetInt32()),
         "arabic_to_roman" => new { roman = RomanNumerals.FromArabic(arguments.GetProperty("number").GetInt32()) },
         "roman_to_arabic" => new { number = RomanNumerals.ToArabic(arguments.GetProperty("roman").GetString()!) },
         "text_to_nato_alphabet" => new { nato = NatoAlphabet.Convert(arguments.GetProperty("text").GetString()!) },

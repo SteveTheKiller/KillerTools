@@ -58,6 +58,7 @@
   "lookup_cve": "verified",
   "markdown_to_html": "verified",
   "search_gifs": "verified",
+  "search_emoji": "verified",
   "get_browser_camera_local": "verified",
   "get_browser_device_information_local": "verified",
   "get_browser_html_local": "verified",

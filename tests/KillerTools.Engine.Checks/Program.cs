@@ -16,6 +16,7 @@ var checks = new (string Name, Action Run)[]
     ("percentages", CheckPercentages),
     ("text conversions", CheckTextConversions),
     ("FIGlet text", CheckAsciiArt),
+    ("emoji search", CheckEmojiSearch),
     ("case conversions", CheckCaseConversions),
     ("Lorem Ipsum generation", CheckLoremIpsum),
     ("date time conversions", CheckDateTimeConversions),
@@ -84,6 +85,18 @@ static void CheckAsciiArt()
     Equal(317, AsciiArt.FontNames().Count);
     Throws<ArgumentException>(() => AsciiArt.Draw("test", "../font"));
     Throws<ArgumentOutOfRangeException>(() => AsciiArt.Draw("test", "Standard", 19));
+}
+
+static void CheckEmojiSearch()
+{
+    var face = EmojiSearch.Search("grinning face", 1).Single();
+    Equal("😀", face.Emoji);
+    Equal("grinning face", face.Name);
+    Equal("U+1F600", EmojiSearch.Search("U+1F600", 1).Single().CodePoint);
+    Equal("🏴󠁧󠁢󠁷󠁬󠁳󠁿", EmojiSearch.Search("welsh", 1).Single().Emoji);
+    Equal(3, EmojiSearch.Search("flag", 3).Count);
+    Throws<ArgumentOutOfRangeException>(() => EmojiSearch.Search("", 10));
+    Throws<ArgumentOutOfRangeException>(() => EmojiSearch.Search("face", 31));
 }
 
 static void CheckDateTimeConversions()
