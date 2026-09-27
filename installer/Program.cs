@@ -85,7 +85,7 @@ namespace KillerMCP.Setup
             bool movedPrevious = false;
             try
             {
-                if (Directory.Exists(destination)) ValidateInstalled(destination);
+                if (Directory.Exists(destination)) ValidateInstalled(destination, allowLegacy: true);
                 ExtractAndVerify(staging);
                 if (Directory.Exists(destination)) { Directory.Move(destination, backup); movedPrevious = true; }
                 try { Directory.Move(staging, destination); }
@@ -97,7 +97,7 @@ namespace KillerMCP.Setup
                     if (movedPrevious) Directory.Move(backup, destination);
                     throw;
                 }
-                if (movedPrevious) DeleteVerifiedInstallation(backup);
+                if (movedPrevious) DeleteVerifiedInstallation(backup, allowLegacy: true);
                 RegisterInstalledApp(destination);
             }
             finally
@@ -157,15 +157,18 @@ namespace KillerMCP.Setup
             ValidateInstalled(staging);
         }
 
-        private static Manifest ValidateInstalled(string destination)
+        private static Manifest ValidateInstalled(string destination, bool allowLegacy = false)
         {
             string manifestPath = Path.Combine(destination, "manifest.json");
             var serializer = new JavaScriptSerializer { MaxJsonLength = 4 * 1024 * 1024 };
             Manifest manifest = serializer.Deserialize<Manifest>(File.ReadAllText(manifestPath)) ?? throw new InvalidDataException("The installation manifest is invalid.");
-            if (manifest.files == null || !manifest.files.ContainsKey("KillerMCP.exe") || !manifest.files.ContainsKey("KillerMCP.Configure.exe")) throw new InvalidDataException("The package does not contain the native KillerMCP runtime.");
+            Dictionary<string, ManifestFile> files = manifest.files ?? throw new InvalidDataException("The installation manifest does not list any files.");
+            bool native = files.ContainsKey("KillerMCP.exe") && files.ContainsKey("KillerMCP.Configure.exe");
+            bool legacy = files.ContainsKey("node.exe") && files.ContainsKey("killermcp.mjs") && files.ContainsKey("killertools.mjs");
+            if (!native && !(allowLegacy && legacy)) throw new InvalidDataException("The package does not contain a supported KillerMCP runtime.");
             string[] actual = Directory.GetFiles(destination, "*", SearchOption.AllDirectories).Select(path => path.Substring(destination.Length).TrimStart(Path.DirectorySeparatorChar).Replace('\\', '/')).Where(name => name != "manifest.json").ToArray();
-            if (actual.Length != manifest.files.Count || actual.Any(name => !manifest.files.ContainsKey(name))) throw new InvalidOperationException("The installation folder contains files outside the KillerMCP manifest.");
-            foreach (KeyValuePair<string, ManifestFile> item in manifest.files)
+            if (actual.Length != files.Count || actual.Any(name => !files.ContainsKey(name))) throw new InvalidOperationException("The installation folder contains files outside the KillerMCP manifest.");
+            foreach (KeyValuePair<string, ManifestFile> item in files)
             {
                 string path = Path.Combine(destination, item.Key.Replace('/', Path.DirectorySeparatorChar));
                 if (!File.Exists(path) || new FileInfo(path).Length != item.Value.bytes || !Sha256(path).Equals(item.Value.sha256, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Package verification failed for " + item.Key);
@@ -173,9 +176,9 @@ namespace KillerMCP.Setup
             return manifest;
         }
 
-        private static void DeleteVerifiedInstallation(string destination)
+        private static void DeleteVerifiedInstallation(string destination, bool allowLegacy = false)
         {
-            Manifest manifest = ValidateInstalled(destination);
+            Manifest manifest = ValidateInstalled(destination, allowLegacy);
             foreach (string name in manifest.files!.Keys) File.Delete(Path.Combine(destination, name.Replace('/', Path.DirectorySeparatorChar)));
             File.Delete(Path.Combine(destination, "manifest.json"));
             foreach (string directory in Directory.GetDirectories(destination, "*", SearchOption.AllDirectories).OrderByDescending(value => value.Length)) Directory.Delete(directory);

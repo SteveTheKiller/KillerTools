@@ -33,17 +33,47 @@ try {
     if ($missingRuntime.ExitCode -ne 10 -or (Test-Path -LiteralPath $installed)) { throw 'Silent setup did not refuse installation when .NET 10 was unavailable.' }
 
     $env:KILLERMCP_TEST_RUNTIME = '1'
+    New-Item -ItemType Directory -Path $installed -Force | Out-Null
+    $legacyFiles = @{
+        'node.exe' = 'legacy node runtime'
+        'killermcp.mjs' = 'legacy MCP host'
+        'killertools.mjs' = 'legacy KillerTools bundle'
+    }
+    $legacyManifest = @{ files = @{} }
+    foreach ($item in $legacyFiles.GetEnumerator()) {
+        $path = Join-Path $installed $item.Key
+        Set-Content -LiteralPath $path -Value $item.Value -Encoding utf8NoBOM -NoNewline
+        $legacyManifest.files[$item.Key] = @{ bytes = (Get-Item -LiteralPath $path).Length; sha256 = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash }
+    }
+    $legacyManifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $installed 'manifest.json') -Encoding utf8NoBOM
+    $setupCopy = "$installed-Setup.exe"
+    Copy-Item -LiteralPath $setup -Destination $setupCopy
+    $uninstallKey = 'HKCU:\Software\KillerMCP\InstallerTests\' + (Split-Path $scratch -Leaf)
+    New-Item -Path $uninstallKey -Force | Out-Null
+    New-ItemProperty -Path $uninstallKey -Name DisplayVersion -Value '0.1.0' -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $uninstallKey -Name InstallLocation -Value $installed -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $uninstallKey -Name SetupSha256 -Value (Get-FileHash -LiteralPath $setupCopy -Algorithm SHA256).Hash -PropertyType String -Force | Out-Null
+    $legacyNode = Join-Path $installed 'node.exe'
+    $legacyScript = Join-Path $installed 'killermcp.mjs'
+    @{ transport = @{ type = 'stdio'; command = $legacyNode; args = @($legacyScript) } } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $codexState -Encoding utf8NoBOM
+    foreach ($name in $names) {
+        $path = [Environment]::GetEnvironmentVariable("KILLERMCP_TEST_${name}_CONFIG")
+        $configuration = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+        $registration = @{ command = $legacyNode; args = @($legacyScript) }
+        if ($name -eq 'CLAUDE') { $registration.type = 'stdio' }
+        $configuration | Add-Member -NotePropertyName mcpServers -NotePropertyValue @{ killermcp = $registration }
+        $configuration | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $path -Encoding utf8NoBOM
+    }
     foreach ($pass in 1..2) {
         $install = Start-Process -FilePath $setup -ArgumentList '/silent' -Wait -PassThru -WindowStyle Hidden
         if ($install.ExitCode -ne 0) { throw "Installer pass $pass failed with exit code $($install.ExitCode)." }
         node (Join-Path $PSScriptRoot 'Test-NativePackage.mjs') $installed
         if ($LASTEXITCODE -ne 0) { throw "Installed runtime check failed on pass $pass." }
+        if (Test-Path -LiteralPath $legacyNode) { throw 'Installer did not remove the legacy Node runtime.' }
     }
 
-    $setupCopy = "$installed-Setup.exe"
-    $uninstallKey = 'HKCU:\Software\KillerMCP\InstallerTests\' + (Split-Path $scratch -Leaf)
     $entry = Get-ItemProperty -LiteralPath $uninstallKey
-    if (-not (Test-Path -LiteralPath $setupCopy -PathType Leaf) -or $entry.DisplayVersion -ne '0.1.2' -or $entry.InstallLocation -ne $installed) { throw 'Installed Apps registration is incorrect.' }
+    if (-not (Test-Path -LiteralPath $setupCopy -PathType Leaf) -or $entry.DisplayVersion -ne '0.2.0' -or $entry.InstallLocation -ne $installed) { throw 'Installed Apps registration is incorrect.' }
     $codex = Get-Content -LiteralPath $codexState -Raw | ConvertFrom-Json
     if ($codex.transport.command -ne (Join-Path $installed 'KillerMCP.exe') -or $codex.transport.args.Count -ne 0) { throw 'Codex registration is incorrect.' }
     foreach ($name in $names) {
@@ -99,7 +129,7 @@ try {
         if ($configuration.preservedSetting -ne 'keep' -or $null -ne $configuration.mcpServers.killermcp) { throw "$name was not safely disconnected." }
     }
     $success = $true
-    Write-Output 'KillerMCP runtime prerequisite, install, reinstall, seven client registrations, MCP calls, and uninstall passed.'
+    Write-Output 'KillerMCP runtime prerequisite, legacy migration, install, reinstall, seven client registrations, MCP calls, and uninstall passed.'
 }
 finally {
     foreach ($name in $variables) { [Environment]::SetEnvironmentVariable($name, $previous[$name]) }

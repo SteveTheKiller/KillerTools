@@ -16,25 +16,17 @@ public static class ClientRegistration
         var servers = ReadServers(root, clientName);
         if (servers.TryGetPropertyValue(ServerName, out var existing))
         {
-            if (!Matches(existing, executablePath, includeStdioType))
+            if (Matches(existing, executablePath, includeStdioType))
             {
-                throw new InvalidOperationException($"{clientName} already has a different killermcp connection. Its settings were left unchanged.");
+                return $"{clientName} already has the correct KillerMCP connection.";
             }
-
-            return $"{clientName} already has the correct KillerMCP connection.";
+            if (!MatchesLegacy(existing, executablePath, includeStdioType)) throw new InvalidOperationException($"{clientName} already has a different killermcp connection. Its settings were left unchanged.");
+            servers[ServerName] = Registration(executablePath, includeStdioType);
+            Write(configurationPath, root);
+            return $"KillerMCP was upgraded in {clientName}.";
         }
 
-        var registration = new JsonObject
-        {
-            ["command"] = executablePath,
-            ["args"] = new JsonArray(),
-        };
-        if (includeStdioType)
-        {
-            registration["type"] = "stdio";
-        }
-
-        servers[ServerName] = registration;
+        servers[ServerName] = Registration(executablePath, includeStdioType);
         Write(configurationPath, root);
         return $"KillerMCP was added to {clientName}.";
     }
@@ -76,6 +68,29 @@ public static class ClientRegistration
         }
 
         return !includeStdioType || registration["type"]?.GetValue<string>() == "stdio";
+    }
+
+    public static bool MatchesLegacy(JsonNode? value, string executablePath, bool includeStdioType = false)
+    {
+        var directory = Path.GetDirectoryName(executablePath);
+        if (directory is null || value is not JsonObject registration
+            || registration["command"]?.GetValue<string>() is not string command
+            || registration["args"] is not JsonArray args
+            || args.Count != 1
+            || args[0]?.GetValue<string>() is not string script
+            || !PathEquals(command, Path.Combine(directory, OperatingSystem.IsWindows() ? "node.exe" : "node"))
+            || !PathEquals(script, Path.Combine(directory, "killermcp.mjs")))
+        {
+            return false;
+        }
+        return !includeStdioType || registration["type"]?.GetValue<string>() == "stdio";
+    }
+
+    private static JsonObject Registration(string executablePath, bool includeStdioType)
+    {
+        var registration = new JsonObject { ["command"] = executablePath, ["args"] = new JsonArray() };
+        if (includeStdioType) registration["type"] = "stdio";
+        return registration;
     }
 
     private static JsonObject ReadRoot(string path, string clientName)

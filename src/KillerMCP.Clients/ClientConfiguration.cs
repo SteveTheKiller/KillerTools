@@ -62,8 +62,19 @@ public static class ClientConfiguration
         var existing = Run(codex, ["mcp", "get", "killermcp", "--json"]);
         if (existing.ExitCode == 0)
         {
-            if (!MatchesCodex(existing.StandardOutput, executablePath)) throw new InvalidOperationException("Codex already has a different killermcp connection. Its settings were left unchanged.");
-            return "Codex already has the correct KillerMCP connection.";
+            if (MatchesCodex(existing.StandardOutput, executablePath)) return "Codex already has the correct KillerMCP connection.";
+            if (!TryReadLegacyCodex(existing.StandardOutput, executablePath, out var legacyCommand, out var legacyArguments)) throw new InvalidOperationException("Codex already has a different killermcp connection. Its settings were left unchanged.");
+            var removed = Run(codex, ["mcp", "remove", "killermcp"]);
+            if (removed.ExitCode != 0) throw new InvalidOperationException("Codex could not replace the previous KillerMCP connection: " + removed.StandardError.Trim());
+            var upgraded = Run(codex, ["mcp", "add", "killermcp", "--", executablePath]);
+            if (upgraded.ExitCode != 0)
+            {
+                Run(codex, ["mcp", "add", "killermcp", "--", legacyCommand, .. legacyArguments]);
+                throw new InvalidOperationException("Codex could not add the native KillerMCP connection: " + upgraded.StandardError.Trim());
+            }
+            var upgradedState = Run(codex, ["mcp", "get", "killermcp", "--json"]);
+            if (upgradedState.ExitCode != 0 || !MatchesCodex(upgradedState.StandardOutput, executablePath)) throw new InvalidOperationException("Codex did not save the native KillerMCP connection.");
+            return "KillerMCP was upgraded in Codex.";
         }
         if (!existing.StandardError.Contains("No MCP server named", StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Codex could not read its MCP configuration: " + existing.StandardError.Trim());
         var added = Run(codex, ["mcp", "add", "killermcp", "--", executablePath]);
@@ -96,6 +107,25 @@ public static class ClientConfiguration
             return transport.GetProperty("type").GetString() == "stdio" && PathEquals(transport.GetProperty("command").GetString()!, executablePath) && transport.GetProperty("args").GetArrayLength() == 0;
         }
         catch { return false; }
+    }
+
+    private static bool TryReadLegacyCodex(string json, string executablePath, out string command, out string[] arguments)
+    {
+        command = string.Empty;
+        arguments = [];
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            var transport = document.RootElement.GetProperty("transport");
+            var directory = Path.GetDirectoryName(executablePath)!;
+            command = transport.GetProperty("command").GetString()!;
+            arguments = transport.GetProperty("args").EnumerateArray().Select(value => value.GetString()!).ToArray();
+            return transport.GetProperty("type").GetString() == "stdio"
+                && PathEquals(command, Path.Combine(directory, OperatingSystem.IsWindows() ? "node.exe" : "node"))
+                && arguments.Length == 1
+                && PathEquals(arguments[0], Path.Combine(directory, "killermcp.mjs"));
+        }
+        catch { command = string.Empty; arguments = []; return false; }
     }
 
     private static void Add(List<JsonClient> clients, IReadOnlyDictionary<string, string?> environment, string overrideName, string name, string normalPath, bool installed, bool includeStdioType = false)
