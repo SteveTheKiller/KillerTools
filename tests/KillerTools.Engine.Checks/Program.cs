@@ -7,6 +7,7 @@ using KillerTools.Engine.Photography;
 using KillerTools.Engine.Network;
 using KillerTools.Engine.Reference;
 using KillerTools.Engine.Security;
+using KillerTools.Engine.Web;
 
 var checks = new (string Name, Action Run)[]
 {
@@ -23,6 +24,7 @@ var checks = new (string Name, Action Run)[]
     ("JSON5 formatting and diff", CheckStructuredJson),
     ("XML and JSON conversion", CheckXmlJson),
     ("YAML and TOML conversion", CheckYamlToml),
+    ("meta tag generation", CheckMetaTags),
     ("email records", CheckEmailRecords),
     ("email headers", CheckEmailHeaders),
     ("safe regular expressions", CheckSafeRegex),
@@ -196,6 +198,14 @@ static void CheckYamlToml()
     Equal("a: 1\n", StructuredTextConverter.JsonToYaml("{a:1}"));
     Equal("a = 1", StructuredTextConverter.JsonToToml("{a:1}"));
     Equal("a: 1\nb: 2\n", StructuredTextConverter.FormatYaml("b: 2\na: 1", 2, true));
+}
+
+static void CheckMetaTags()
+{
+    var html = MetaTags.Generate("website", [new("title", "KillerTools"), new("url", "https://killertools.net")]);
+    Equal(true, html.Contains("<meta property=\"og:title\" value=\"KillerTools\" />", StringComparison.Ordinal));
+    Equal(true, html.Contains("<meta name=\"twitter:title\" value=\"KillerTools\" />", StringComparison.Ordinal));
+    Throws<ArgumentException>(() => MetaTags.Generate("website", [new("unknown", "value")]));
 }
 
 static void CheckNetworkCalculations()

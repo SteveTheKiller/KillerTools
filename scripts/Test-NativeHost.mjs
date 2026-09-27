@@ -72,7 +72,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'lookup_m365_sku', 'lookup_port_protocol', 'lookup_windows_error', 'lookup_windows_event',
   'list_killer_modules', 'list_killer_scripts',
   'diff_text', 'format_json', 'minify_json', 'diff_json', 'convert_xml_json', 'format_xml',
-  'convert_json', 'convert_yaml', 'convert_toml', 'format_yaml', 'calculate_nd_exposure', 'calculate_exposure_equivalence',
+  'convert_json', 'convert_yaml', 'convert_toml', 'format_yaml', 'generate_meta_tags', 'calculate_nd_exposure', 'calculate_exposure_equivalence',
   'calculate_depth_of_field', 'generate_svg_placeholder', 'calculate_chmod',
   'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv',
   'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers',
@@ -133,6 +133,11 @@ const yamlJson = await request('tools/call', { name: 'convert_yaml', arguments: 
 assert.equal(JSON.parse(yamlJson.content[0].text).text, '{\n  "a": 1\n}');
 const formattedYaml = await request('tools/call', { name: 'format_yaml', arguments: { text: 'b: 2\na: 1', sortKeys: true } });
 assert.equal(JSON.parse(formattedYaml.content[0].text).text, 'a: 1\nb: 2\n');
+const metaTags = await request('tools/call', { name: 'generate_meta_tags', arguments: { fields: { title: 'KillerTools' } } });
+assert.match(JSON.parse(metaTags.content[0].text).html, /property="og:title" value="KillerTools"/);
+const invalidMetaTags = await request('tools/call', { name: 'generate_meta_tags', arguments: { fields: { unknown: 'value' } } });
+assert.equal(invalidMetaTags.isError, true);
+assert.equal(invalidMetaTags.content[0].text, 'Unknown metadata field for selected page type');
 const subnet = await request('tools/call', { name: 'calculate_ipv4_subnet', arguments: { address: '198.51.100.27/24' } });
 assert.equal(JSON.parse(subnet.content[0].text).cidr, '198.51.100.0/24');
 const spf = await request('tools/call', { name: 'generate_spf_record', arguments: { providers: ['include:_spf.google.com'], ipAddresses: ['198.51.100.7'], enforcement: '-all' } });
