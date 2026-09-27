@@ -39,6 +39,7 @@ var checks = new (string Name, Action Run)[]
     ("group policy lookup", CheckGroupPolicyLookup),
     ("reference translations", CheckReferenceTranslations),
     ("Killer module and script catalogs", CheckKillerCatalogs),
+    ("PowerShell Builder catalog", CheckPowerShellBuilder),
     ("portable utilities", CheckPortableUtilities),
     ("bounded Base64 files", CheckBase64Files),
     ("one-time passwords", CheckOtp),
@@ -117,6 +118,18 @@ static void CheckKillerCatalogs()
     Equal(1, scripts.Count);
     Equal("ALPHA.ps1", scripts[0].Filename);
     Equal("https://raw.githubusercontent.com/SteveTheKiller/killer-scripts/main/ALPHA.ps1", scripts[0].DownloadUrl);
+}
+
+static void CheckPowerShellBuilder()
+{
+    var results = PowerShellBuilder.Search("ActiveDirectory", 20);
+    Equal(true, results.Count > 0);
+    Equal("Get-ADUser", PowerShellBuilder.Get("get-aduser").GetProperty("cmdlet").GetString());
+    var parameters = System.Text.Json.JsonSerializer.SerializeToElement(new Dictionary<string, object> { ["Identity"] = "O'Brien", ["Properties"] = "DisplayName, mail" });
+    var command = PowerShellBuilder.Build("Get-ADUser", parameters);
+    Equal("Get-ADUser -Identity 'O''Brien' -Properties 'DisplayName','mail'", command.Command);
+    Equal(false, command.RequiresAdmin);
+    Throws<KeyNotFoundException>(() => PowerShellBuilder.Get("Not-A-Cmdlet"));
 }
 
 static void CheckMicrosoftReferenceLookups()

@@ -78,6 +78,9 @@ foreach (var request in input.RootElement.EnumerateArray())
         "lookup_windows_event" => MicrosoftReferenceResult(operation, arguments),
         "list_killer_modules" => KillerCatalogs.ListModules(arguments.TryGetProperty("name", out var moduleName) ? moduleName.GetString() : null),
         "list_killer_scripts" => (await KillerCatalogs.ListScriptsAsync(arguments.TryGetProperty("query", out var scriptQuery) ? scriptQuery.GetString() : null)).Select(script => new { filename = script.Filename, name = script.Name, description = script.Description, downloadUrl = script.DownloadUrl }),
+        "search_powershell_cmdlets" => PowerShellBuilder.Search(arguments.GetProperty("query").GetString()!, arguments.GetProperty("limit").GetInt32()).Select(item => new { cmdlet = item.Cmdlet, module = item.Module, category = item.Category, description = item.Description, requiresAdmin = item.RequiresAdmin }),
+        "get_powershell_cmdlet" => PowerShellBuilder.Get(arguments.GetProperty("cmdlet").GetString()!),
+        "build_powershell_command" => PowerShellBuildResult(arguments),
         "encode_file_base64_local" => EncodedFileResult(arguments),
         "otp_private" => OtpResult(arguments),
         "generate_uuids" => new { ids = IdentifierGenerators.GenerateUuids(arguments.GetProperty("version").GetString()!, arguments.GetProperty("count").GetInt32(), arguments.TryGetProperty("name", out var name) ? name.GetString() : null, arguments.TryGetProperty("namespace", out var namespaceValue) ? namespaceValue.GetString() : null) },
@@ -102,6 +105,12 @@ static object DateTimeResult(JsonElement arguments)
 {
     var value = DateTimeConverter.Convert(arguments.GetProperty("value").GetString()!, arguments.GetProperty("inputFormat").GetString()!);
     return new { iso8601 = value.Iso8601, iso9075 = value.Iso9075, rfc3339 = value.Rfc3339, rfc7231 = value.Rfc7231, unixSeconds = value.UnixSeconds, timestampMs = value.TimestampMs, utc = value.Utc, mongoObjectId = value.MongoObjectId, excel = value.Excel };
+}
+
+static object PowerShellBuildResult(JsonElement arguments)
+{
+    var result = PowerShellBuilder.Build(arguments.GetProperty("cmdlet").GetString()!, arguments.GetProperty("parameters"));
+    return new { command = result.Command, requiresAdmin = result.RequiresAdmin };
 }
 
 static object StructuredConversion(JsonElement arguments, string from)

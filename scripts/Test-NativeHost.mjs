@@ -71,6 +71,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'convert_date_time', 'lookup_exchange_ndr', 'lookup_group_policy', 'lookup_http_status',
   'lookup_m365_sku', 'lookup_port_protocol', 'lookup_windows_error', 'lookup_windows_event',
   'list_killer_modules', 'list_killer_scripts',
+  'search_powershell_cmdlets', 'get_powershell_cmdlet', 'build_powershell_command',
   'diff_text', 'format_json', 'minify_json', 'diff_json', 'convert_xml_json', 'format_xml',
   'convert_json', 'convert_yaml', 'convert_toml', 'format_yaml', 'generate_meta_tags', 'search_gifs',
   'open_browser_companion_local', 'get_browser_device_information_local', 'get_browser_keycode_local',
@@ -118,6 +119,12 @@ const modules = await request('tools/call', { name: 'list_killer_modules', argum
 assert.equal(JSON.parse(modules.content[0].text)[0].name, 'KillerPivot');
 const scripts = await request('tools/call', { name: 'list_killer_scripts', arguments: { query: 'AMORT' } });
 assert.equal(JSON.parse(scripts.content[0].text)[0].filename, 'AMORT.ps1');
+const cmdlets = JSON.parse((await request('tools/call', { name: 'search_powershell_cmdlets', arguments: { query: 'ActiveDirectory', limit: 20 } })).content[0].text);
+assert.equal(cmdlets.some(item => item.cmdlet === 'Get-ADUser'), true);
+const cmdlet = JSON.parse((await request('tools/call', { name: 'get_powershell_cmdlet', arguments: { cmdlet: 'get-aduser' } })).content[0].text);
+assert.equal(cmdlet.cmdlet, 'Get-ADUser');
+const builtCommand = JSON.parse((await request('tools/call', { name: 'build_powershell_command', arguments: { cmdlet: 'Get-ADUser', parameters: { Identity: "O'Brien", Properties: 'DisplayName, mail' } } })).content[0].text);
+assert.equal(builtCommand.command, "Get-ADUser -Identity 'O''Brien' -Properties 'DisplayName','mail'");
 const vietnameseNdr = await request('tools/call', { name: 'lookup_exchange_ndr', arguments: { query: 'SPF Validation Failed', limit: 1, locale: 'vi' } });
 assert.equal(JSON.parse(vietnameseNdr.content[0].text)[0].name, 'Xác thực SPF không thành công');
 const exposure = await request('tools/call', { name: 'calculate_nd_exposure', arguments: { baseSeconds: 0.5, stops: 6 } });

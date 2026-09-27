@@ -101,6 +101,9 @@ static class ToolRegistry
         LookupTool("lookup_windows_event", "Search the Windows Event ID reference."),
         Tool("list_killer_modules", "List the KillerTools PowerShell modules, commands, install text, and repository links.", new { name = new { type = "string", maxLength = 80 } }, []),
         Tool("list_killer_scripts", "List KillerScripts names, descriptions, and download links from GitHub.", new { query = new { type = "string", maxLength = 80, @default = "" } }, []),
+        Tool("search_powershell_cmdlets", "Search the KillerTools PowerShell Builder catalog. Does not run commands.", new { query = new { type = "string", minLength = 1, maxLength = 80 }, limit = new { type = "integer", minimum = 1, maximum = 20, @default = 10 } }, ["query"]),
+        Tool("get_powershell_cmdlet", "Get parameter descriptions and example snippets for an exact KillerTools PowerShell cmdlet. Does not run commands.", new { cmdlet = new { type = "string", minLength = 1, maxLength = 80 } }, ["cmdlet"]),
+        Tool("build_powershell_command", "Assemble a PowerShell command from the KillerTools catalog. Returns text only and never executes it. Review scriptblock parameters before use.", new { cmdlet = new { type = "string", minLength = 1, maxLength = 80 }, parameters = new { type = "object", maxProperties = 20, additionalProperties = new { oneOf = new object[] { new { type = "string", maxLength = 512 }, new { type = "boolean" } } }, @default = new { } } }, ["cmdlet"]),
         Tool("diff_text", "Compare two texts line by line.", new { left = StringSchema(), right = StringSchema() }, ["left", "right"]),
         Tool("format_json", "Prettify JSON5-compatible text with optional key sorting.", new { text = StructuredTextSchema(), indentSize = new { type = "integer", minimum = 0, maximum = 10, @default = 3 }, sortKeys = BooleanSchema(true) }, ["text"]),
         Tool("minify_json", "Minify JSON5-compatible text.", new { text = StructuredTextSchema() }, ["text"]),
@@ -209,6 +212,9 @@ static class ToolRegistry
             "lookup_windows_event" => Localize("windows-event-lookup", MicrosoftReferenceLookups.SearchEvents(Query(arguments), Limit(arguments)), Locale(arguments)),
             "list_killer_modules" => KillerCatalogs.ListModules(OptionalNullableString(arguments, "name")),
             "list_killer_scripts" => KillerScripts(arguments),
+            "search_powershell_cmdlets" => PowerShellBuilder.Search(Query(arguments), Limit(arguments)),
+            "get_powershell_cmdlet" => PowerShellCmdlet(arguments),
+            "build_powershell_command" => PowerShellCommand(arguments),
             "diff_text" => TextDiff.Compare(arguments.GetProperty("left").GetString()!, arguments.GetProperty("right").GetString()!),
             "format_json" => JsonFormat(arguments),
             "minify_json" => JsonMinify(arguments),
@@ -309,6 +315,21 @@ static class ToolRegistry
     private static object BrowserState(string type)
     {
         try { return Companion.Get(type); }
+        catch (InvalidOperationException exception) { throw new ToolCallException(exception.Message); }
+    }
+    private static object PowerShellCmdlet(JsonElement arguments)
+    {
+        try { return PowerShellBuilder.Get(arguments.GetProperty("cmdlet").GetString()!); }
+        catch (KeyNotFoundException exception) { throw new ToolCallException(exception.Message); }
+    }
+    private static object PowerShellCommand(JsonElement arguments)
+    {
+        try
+        {
+            var parameters = arguments.TryGetProperty("parameters", out var value) ? value : JsonSerializer.SerializeToElement(new { });
+            return PowerShellBuilder.Build(arguments.GetProperty("cmdlet").GetString()!, parameters);
+        }
+        catch (KeyNotFoundException exception) { throw new ToolCallException(exception.Message); }
         catch (InvalidOperationException exception) { throw new ToolCallException(exception.Message); }
     }
     private static object GeneratePassword(JsonElement arguments)
