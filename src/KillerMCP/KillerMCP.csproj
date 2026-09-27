@@ -6,6 +6,7 @@
     <Version>0.1.2</Version>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="browser-companion.html" />
     <ProjectReference Include="..\KillerTools.Engine\KillerTools.Engine.csproj" />
     <ProjectReference Include="..\KillerMCP.Runtime\KillerMCP.Runtime.csproj" />
   </ItemGroup>

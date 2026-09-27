@@ -72,7 +72,10 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'lookup_m365_sku', 'lookup_port_protocol', 'lookup_windows_error', 'lookup_windows_event',
   'list_killer_modules', 'list_killer_scripts',
   'diff_text', 'format_json', 'minify_json', 'diff_json', 'convert_xml_json', 'format_xml',
-  'convert_json', 'convert_yaml', 'convert_toml', 'format_yaml', 'generate_meta_tags', 'search_gifs', 'describe_cron', 'calculate_nd_exposure', 'calculate_exposure_equivalence',
+  'convert_json', 'convert_yaml', 'convert_toml', 'format_yaml', 'generate_meta_tags', 'search_gifs',
+  'open_browser_companion_local', 'get_browser_device_information_local', 'get_browser_keycode_local',
+  'get_browser_html_local', 'get_browser_signature_local', 'get_browser_camera_local',
+  'describe_cron', 'calculate_nd_exposure', 'calculate_exposure_equivalence',
   'calculate_depth_of_field', 'generate_svg_placeholder', 'calculate_chmod',
   'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv',
   'parse_url', 'lookup_domain_dns', 'lookup_domain_rdap', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers',
@@ -138,6 +141,30 @@ assert.match(JSON.parse(metaTags.content[0].text).html, /property="og:title" val
 const invalidMetaTags = await request('tools/call', { name: 'generate_meta_tags', arguments: { fields: { unknown: 'value' } } });
 assert.equal(invalidMetaTags.isError, true);
 assert.equal(invalidMetaTags.content[0].text, 'Unknown metadata field for selected page type');
+const missingBrowserState = await request('tools/call', { name: 'get_browser_device_information_local', arguments: {} });
+assert.equal(missingBrowserState.isError, true);
+const companion = JSON.parse((await request('tools/call', { name: 'open_browser_companion_local', arguments: {} })).content[0].text);
+const companionPage = await fetch(companion.url);
+assert.equal(companionPage.status, 200);
+assert.match(await companionPage.text(), /KillerTools MCP Browser Companion/);
+const companionUrl = new URL(companion.url);
+for (const [type, tool, value] of [
+  ['device', 'get_browser_device_information_local', '{"userAgent":"test"}'],
+  ['key', 'get_browser_keycode_local', '{"key":"A"}'],
+  ['html', 'get_browser_html_local', '<p>test</p>'],
+  ['signature', 'get_browser_signature_local', 'data:image/png;base64,dGVzdA=='],
+  ['camera', 'get_browser_camera_local', 'data:image/png;base64,dGVzdA=='],
+]) {
+  const stateResponse = await fetch(new URL(`/state${companionUrl.search}`, companionUrl), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: companionUrl.origin },
+    body: JSON.stringify({ type, value }),
+  });
+  assert.equal(stateResponse.status, 204);
+  const browserState = JSON.parse((await request('tools/call', { name: tool, arguments: {} })).content[0].text);
+  assert.equal(browserState.value, value);
+  assert.equal(typeof browserState.updatedAt, 'number');
+}
 const cron = await request('tools/call', { name: 'describe_cron', arguments: { expression: '*/5 * * * *' } });
 assert.equal(JSON.parse(cron.content[0].text).description, 'Every 5 minutes, every hour, every day');
 const subnet = await request('tools/call', { name: 'calculate_ipv4_subnet', arguments: { address: '198.51.100.27/24' } });

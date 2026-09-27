@@ -70,6 +70,7 @@ while ((line = Console.ReadLine()) is not null)
 static class ToolRegistry
 {
     private static readonly JsonSerializerOptions CamelCaseJson = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    private static readonly BrowserCompanion Companion = new();
     private static IReadOnlyDictionary<string, AppAdapter> Adapters = new Dictionary<string, AppAdapter>();
     public static UpdateStatus Status { get; set; } = null!;
 
@@ -112,6 +113,12 @@ static class ToolRegistry
         Tool("format_yaml", "Prettify YAML with optional key sorting using KillerTools YAML Viewer.", new { text = StructuredTextSchema(), indentSize = new { type = "integer", minimum = 1, maximum = 10, @default = 2 }, sortKeys = BooleanSchema(false) }, ["text"]),
         Tool("generate_meta_tags", "Generate Open Graph and Twitter meta tags using KillerTools.", new { type = EnumSchema("website", "article", "book", "profile", "music.song", "music.album", "music.playlist", "music.radio_station", "video.movie", "video.episode", "video.tv_show", "video.other"), fields = new { type = "object", maxProperties = 30, additionalProperties = new { type = "string", maxLength = 1024 } } }, []),
         Tool("search_gifs", "Search GIFs through the fixed KillerTools GIF proxy and return links and titles.", new { query = new { type = "string", minLength = 1, maxLength = 80 }, limit = new { type = "integer", minimum = 1, maximum = 20, @default = 10 } }, ["query"]),
+        Tool("open_browser_companion_local", "Get the private local page for browser, camera, editor, and signature tools.", new { }, []),
+        Tool("get_browser_device_information_local", "Read live device and browser information from the local companion page.", new { }, []),
+        Tool("get_browser_keycode_local", "Read the most recent keyboard event from the local companion page.", new { }, []),
+        Tool("get_browser_html_local", "Read the current HTML editor content from the local companion page.", new { }, []),
+        Tool("get_browser_signature_local", "Read the drawn signature PNG from the local companion page.", new { }, []),
+        Tool("get_browser_camera_local", "Read the photo or video captured in the local companion page.", new { }, []),
         Tool("describe_cron", "Validate and describe a cron expression using KillerTools.", new { expression = new { type = "string", minLength = 1, maxLength = 128 }, use24HourTimeFormat = BooleanSchema(true), dayOfWeekStartIndexZero = BooleanSchema(true) }, ["expression"]),
         Tool("calculate_nd_exposure", "Calculate exposure time with a neutral density filter.", new { baseSeconds = NumberSchema(), stops = NumberSchema() }, ["baseSeconds", "stops"]),
         Tool("calculate_exposure_equivalence", "Calculate equivalent shutter speed after an aperture change.", new { shutterSeconds = NumberSchema(), originalAperture = NumberSchema(), targetAperture = NumberSchema() }, ["shutterSeconds", "originalAperture", "targetAperture"]),
@@ -212,6 +219,12 @@ static class ToolRegistry
             "format_yaml" => YamlFormat(arguments),
             "generate_meta_tags" => MetaTagResult(arguments),
             "search_gifs" => SearchGifs(arguments),
+            "open_browser_companion_local" => new { url = Companion.Url },
+            "get_browser_device_information_local" => BrowserState("device"),
+            "get_browser_keycode_local" => BrowserState("key"),
+            "get_browser_html_local" => BrowserState("html"),
+            "get_browser_signature_local" => BrowserState("signature"),
+            "get_browser_camera_local" => BrowserState("camera"),
             "describe_cron" => CronResult(arguments),
             "calculate_nd_exposure" => new { seconds = ExposureCalculators.WithNeutralDensity(arguments.GetProperty("baseSeconds").GetDouble(), arguments.GetProperty("stops").GetDouble()) },
             "calculate_exposure_equivalence" => new { shutterSeconds = ExposureCalculators.EquivalentShutter(arguments.GetProperty("shutterSeconds").GetDouble(), arguments.GetProperty("originalAperture").GetDouble(), arguments.GetProperty("targetAperture").GetDouble()) },
@@ -288,6 +301,11 @@ static class ToolRegistry
         }
 
         return Status;
+    }
+    private static object BrowserState(string type)
+    {
+        try { return Companion.Get(type); }
+        catch (InvalidOperationException exception) { throw new ToolCallException(exception.Message); }
     }
     private static string Locale(JsonElement arguments) => OptionalString(arguments, "locale", "en");
     private static object Localize<T>(string tool, IReadOnlyList<T> entries, string locale)
