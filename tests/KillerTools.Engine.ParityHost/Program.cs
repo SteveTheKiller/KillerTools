@@ -3,6 +3,8 @@ using System.Text.Json;
 using KillerTools.Engine.Math;
 using KillerTools.Engine.Numbers;
 using KillerTools.Engine.Text;
+using KillerTools.Engine.Documents;
+using KillerTools.Engine.SystemTools;
 
 Console.InputEncoding = Encoding.UTF8;
 Console.OutputEncoding = Encoding.UTF8;
@@ -26,8 +28,29 @@ foreach (var request in input.RootElement.EnumerateArray())
         "roman_to_arabic" => new { number = RomanNumerals.ToArabic(arguments.GetProperty("roman").GetString()!) },
         "text_to_nato_alphabet" => new { nato = NatoAlphabet.Convert(arguments.GetProperty("text").GetString()!) },
         "convert_integer_base" => new { value = IntegerBases.Convert(arguments.GetProperty("value").GetString()!, arguments.GetProperty("fromBase").GetInt32(), arguments.GetProperty("toBase").GetInt32()) },
+        "convert_temperature" => Temperatures.Convert(arguments.GetProperty("value").GetDouble(), arguments.GetProperty("scale").GetString()!),
+        "calculate_chmod" => ChmodResult(arguments),
+        "generate_svg_placeholder" => SvgResult(arguments),
         _ => throw new InvalidOperationException($"Unknown parity operation: {operation}"),
     });
+}
+
+static object ChmodResult(JsonElement arguments)
+{
+    var permissions = arguments.GetProperty("permissions");
+    PermissionGroup Group(string name)
+    {
+        var group = permissions.GetProperty(name);
+        return new PermissionGroup(group.GetProperty("read").GetBoolean(), group.GetProperty("write").GetBoolean(), group.GetProperty("execute").GetBoolean());
+    }
+    var value = UnixPermissions.Calculate(new UnixPermissionSet(Group("owner"), Group("group"), Group("public")));
+    return new { octal = value.Octal, symbolic = value.Symbolic, command = value.Command };
+}
+
+static object SvgResult(JsonElement arguments)
+{
+    var svg = SvgPlaceholder.Build(arguments.GetProperty("width").GetInt32(), arguments.GetProperty("height").GetInt32(), arguments.GetProperty("fontSize").GetInt32(), arguments.GetProperty("bgColor").GetString()!, arguments.GetProperty("fgColor").GetString()!, arguments.GetProperty("useExactSize").GetBoolean(), arguments.GetProperty("customText").GetString()!);
+    return new { svg, dataUrl = $"data:image/svg+xml;base64,{Base64Text.Encode(svg)}" };
 }
 
 Console.Write(JsonSerializer.Serialize(output));

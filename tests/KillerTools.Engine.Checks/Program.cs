@@ -1,6 +1,8 @@
 using KillerTools.Engine.Math;
 using KillerTools.Engine.Numbers;
 using KillerTools.Engine.Text;
+using KillerTools.Engine.Documents;
+using KillerTools.Engine.SystemTools;
 
 var checks = new (string Name, Action Run)[]
 {
@@ -8,12 +10,20 @@ var checks = new (string Name, Action Run)[]
     ("Unicode entities", CheckUnicodeEntities),
     ("percentages", CheckPercentages),
     ("text conversions", CheckTextConversions),
+    ("portable utilities", CheckPortableUtilities),
 };
 
 foreach (var check in checks)
 {
     check.Run();
     Console.WriteLine($"PASS {check.Name}");
+}
+
+static void CheckPortableUtilities()
+{
+    Equal(0d, Temperatures.Convert(32, "fahrenheit")["celsius"]);
+    Equal("754", UnixPermissions.Calculate(new UnixPermissionSet(new(true, true, true), new(true, false, true), new(true, false, false))).Octal);
+    Equal(true, SvgPlaceholder.Build(10, 20, 8, "#fff", "#000", true, "A&B").Contains("A&amp;B", StringComparison.Ordinal));
 }
 
 static void CheckTextConversions()
