@@ -44,6 +44,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'test_regex',
   'encode_file_base64_local', 'decode_file_base64_local',
   'otp_private', 'generate_otp_secret_private',
+  'generate_ulids', 'generate_uuids',
 ]);
 const called = await request('tools/call', { name: 'text_statistics', arguments: { text: 'hello world' } });
 assert.deepEqual(JSON.parse(called.content[0].text), { characterCount: 11, wordCount: 2, lineCount: 1, byteSize: 11 });
@@ -86,5 +87,9 @@ const otpSecret = await request('tools/call', { name: 'generate_otp_secret_priva
 const generatedOtp = JSON.parse(otpSecret.content[0].text);
 assert.match(generatedOtp.secret, /^[A-Z2-7]{16}$/);
 assert.match(generatedOtp.uri, /^otpauth:\/\/totp\/Killer%20Tools:user%40example\.com\?/);
+const ulids = await request('tools/call', { name: 'generate_ulids', arguments: { count: 2 } });
+assert.match(JSON.parse(ulids.content[0].text).ids[0], /^[0-9A-HJKMNP-TV-Z]{26}$/);
+const uuids = await request('tools/call', { name: 'generate_uuids', arguments: { version: 'v5', count: 1, name: 'example.com', namespace: '6ba7b810-9dad-11d1-80b4-00c04fd430c8' } });
+assert.deepEqual(JSON.parse(uuids.content[0].text).ids, ['cfbff0d1-9375-5685-968c-48ce8b15ae17']);
 child.stdin.end();
 console.log('Native KillerMCP stdio handshake, tool listing, and tool call passed.');

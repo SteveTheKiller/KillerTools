@@ -30,6 +30,7 @@ var checks = new (string Name, Action Run)[]
     ("portable utilities", CheckPortableUtilities),
     ("bounded Base64 files", CheckBase64Files),
     ("one-time passwords", CheckOtp),
+    ("identifier generators", CheckIdentifierGenerators),
 };
 
 foreach (var check in checks)
@@ -191,6 +192,17 @@ static void CheckOtp()
     Equal(16, generated.Secret.Length);
     Equal(true, generated.Secret.All(character => "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".Contains(character)));
     Equal(true, generated.Uri.StartsWith("otpauth://totp/Killer%20Tools:user%40example.com?issuer=Killer%20Tools&secret=", StringComparison.Ordinal));
+}
+
+static void CheckIdentifierGenerators()
+{
+    Equal("00000000-0000-0000-0000-000000000000", IdentifierGenerators.GenerateUuids("NIL", 1)[0]);
+    Equal("9073926b-929f-31c2-abc9-fad77ae3e8eb", IdentifierGenerators.GenerateUuids("v3", 1, "example.com", "6ba7b810-9dad-11d1-80b4-00c04fd430c8")[0]);
+    Equal("cfbff0d1-9375-5685-968c-48ce8b15ae17", IdentifierGenerators.GenerateUuids("v5", 1, "example.com", "6ba7b810-9dad-11d1-80b4-00c04fd430c8")[0]);
+    Equal(true, Guid.TryParse(IdentifierGenerators.GenerateUuids("v4", 1)[0], out _));
+    var ulid = IdentifierGenerators.GenerateUlids(1)[0];
+    Equal(26, ulid.Length);
+    Equal(true, ulid.All(character => "0123456789ABCDEFGHJKMNPQRSTVWXYZ".Contains(character)));
 }
 
 static void CheckHtmlAndDiff()

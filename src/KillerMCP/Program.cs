@@ -85,6 +85,8 @@ static class ToolRegistry
         Tool("decode_file_base64_local", "Decode Base64 to a new local file. Existing files are never overwritten.", new { path = new { type = "string", minLength = 1, maxLength = 1024 }, base64 = new { type = "string", minLength = 1, maxLength = 43_692 } }, ["path", "base64"]),
         Tool("otp_private", "Generate or verify a six-digit HOTP or TOTP code locally.", new { secret = new { type = "string", minLength = 8, maxLength = 128 }, mode = EnumSchema("totp", "hotp"), counter = new { type = "integer", minimum = 0L, maximum = 9_007_199_254_740_991L }, timeStep = new { type = "integer", minimum = 15, maximum = 300, @default = 30 }, code = new { type = "string", pattern = "^\\d{6}$" } }, ["secret"]),
         Tool("generate_otp_secret_private", "Generate a random Base32 OTP secret and an otpauth URI locally.", new { issuer = new { type = "string", minLength = 1, maxLength = 128, @default = "killer-tools" }, account = new { type = "string", minLength = 1, maxLength = 128, @default = "demo-user" } }, []),
+        Tool("generate_ulids", "Generate up to 100 ULIDs.", new { count = new { type = "integer", minimum = 1, maximum = 100, @default = 1 } }, []),
+        Tool("generate_uuids", "Generate up to 100 UUIDs.", new { version = EnumSchema("NIL", "v1", "v3", "v4", "v5"), count = new { type = "integer", minimum = 1, maximum = 100, @default = 1 }, name = new { type = "string", maxLength = 128 }, @namespace = new { type = "string", maxLength = 36 } }, []),
     ];
 
     public static object Call(JsonElement parameters, JsonSerializerOptions json)
@@ -136,6 +138,8 @@ static class ToolRegistry
             "decode_file_base64_local" => DecodeFile(arguments),
             "otp_private" => Otp(arguments),
             "generate_otp_secret_private" => OtpTools.GenerateSecret(OptionalString(arguments, "issuer", "killer-tools"), OptionalString(arguments, "account", "demo-user")),
+            "generate_ulids" => new { ids = IdentifierGenerators.GenerateUlids(OptionalInteger(arguments, "count", 1)) },
+            "generate_uuids" => Uuids(arguments),
             _ => throw new InvalidOperationException($"Unknown tool: {name}"),
             };
             return new { content = new[] { new { type = "text", text = JsonSerializer.Serialize(value, json) } } };
@@ -278,6 +282,20 @@ static class ToolRegistry
             throw new ToolCallException("Invalid OTP secret");
         }
     }
+    private static object Uuids(JsonElement arguments)
+    {
+        try
+        {
+            var ids = IdentifierGenerators.GenerateUuids(OptionalString(arguments, "version", "v4"), OptionalInteger(arguments, "count", 1), OptionalNullableString(arguments, "name"), OptionalNullableString(arguments, "namespace"));
+            return new { ids };
+        }
+        catch (FormatException exception)
+        {
+            throw new ToolCallException(exception.Message);
+        }
+    }
+
+    private static string? OptionalNullableString(JsonElement arguments, string name) => arguments.TryGetProperty(name, out var value) ? value.GetString() : null;
 }
 
 sealed class ToolCallException(string message) : Exception(message);

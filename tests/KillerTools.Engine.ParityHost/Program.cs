@@ -62,6 +62,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "lookup_windows_event" => MicrosoftReferenceResult(operation, arguments),
         "encode_file_base64_local" => EncodedFileResult(arguments),
         "otp_private" => OtpResult(arguments),
+        "generate_uuids" => new { ids = IdentifierGenerators.GenerateUuids(arguments.GetProperty("version").GetString()!, arguments.GetProperty("count").GetInt32(), arguments.TryGetProperty("name", out var name) ? name.GetString() : null, arguments.TryGetProperty("namespace", out var namespaceValue) ? namespaceValue.GetString() : null) },
         _ => throw new InvalidOperationException($"Unknown parity operation: {operation}"),
     });
 }

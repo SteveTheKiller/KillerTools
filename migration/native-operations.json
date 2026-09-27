@@ -19,6 +19,8 @@
   "calculate_ipv4_subnet": "verified",
   "generate_ipv6_ula": "verified",
   "generate_otp_secret_private": "verified",
+  "generate_ulids": "verified",
+  "generate_uuids": "verified",
   "generate_dmarc_record": "verified",
   "generate_spf_record": "verified",
   "generate_svg_placeholder": "verified",
