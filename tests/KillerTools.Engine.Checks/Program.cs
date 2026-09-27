@@ -14,6 +14,7 @@ var checks = new (string Name, Action Run)[]
     ("percentages", CheckPercentages),
     ("text conversions", CheckTextConversions),
     ("case conversions", CheckCaseConversions),
+    ("date time conversions", CheckDateTimeConversions),
     ("HTML entities and text diff", CheckHtmlAndDiff),
     ("IP network calculations", CheckNetworkCalculations),
     ("URL and CSV conversions", CheckUrlAndCsv),
@@ -32,6 +33,15 @@ foreach (var check in checks)
 {
     check.Run();
     Console.WriteLine($"PASS {check.Name}");
+}
+
+static void CheckDateTimeConversions()
+{
+    var value = DateTimeConverter.Convert("0", "unix_seconds");
+    Equal("0", value.UnixSeconds);
+    Equal("0", value.TimestampMs);
+    Equal("00000000000000000", value.MongoObjectId);
+    Equal("25569", value.Excel);
 }
 
 static void CheckCaseConversions()

@@ -23,6 +23,7 @@ foreach (var request in input.RootElement.EnumerateArray())
     {
         "text_statistics" => TextStatisticsResult(arguments),
         "convert_case" => CaseConverter.Convert(arguments.GetProperty("text").GetString()!).Select(item => new { label = item.Label, value = item.Value }),
+        "convert_date_time" => DateTimeResult(arguments),
         "calculate_percentage" => PercentageResult(arguments),
         "encode_base64" => new { encoded = Base64Text.Encode(arguments.GetProperty("text").GetString()!, arguments.TryGetProperty("urlSafe", out var encodeSafe) && encodeSafe.GetBoolean()) },
         "decode_base64" => new { text = Base64Text.Decode(arguments.GetProperty("encoded").GetString()!, arguments.TryGetProperty("urlSafe", out var decodeSafe) && decodeSafe.GetBoolean()) },
@@ -60,6 +61,12 @@ foreach (var request in input.RootElement.EnumerateArray())
         "lookup_windows_event" => MicrosoftReferenceResult(operation, arguments),
         _ => throw new InvalidOperationException($"Unknown parity operation: {operation}"),
     });
+}
+
+static object DateTimeResult(JsonElement arguments)
+{
+    var value = DateTimeConverter.Convert(arguments.GetProperty("value").GetString()!, arguments.GetProperty("inputFormat").GetString()!);
+    return new { iso8601 = value.Iso8601, iso9075 = value.Iso9075, rfc3339 = value.Rfc3339, rfc7231 = value.Rfc7231, unixSeconds = value.UnixSeconds, timestampMs = value.TimestampMs, utc = value.Utc, mongoObjectId = value.MongoObjectId, excel = value.Excel };
 }
 
 static object MicrosoftReferenceResult(string operation, JsonElement arguments)

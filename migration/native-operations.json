@@ -8,6 +8,7 @@
   "calculate_nd_exposure": "verified",
   "convert_temperature": "verified",
   "convert_case": "verified",
+  "convert_date_time": "verified",
   "decode_base64": "verified",
   "diff_text": "verified",
   "encode_base64": "verified",
