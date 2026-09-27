@@ -20,10 +20,11 @@ const environment = {
   KILLERMCP_UPDATE_CACHE: join(updateDirectory, 'status.json'),
   KILLERNOTES_CLI: resolve('tests/KillerMCP.Runtime.Checks/bin/Debug/net10.0/KillerMCP.Runtime.Checks.exe'),
   KILLERMCP_FAKE_NOTES: '1',
+  KILLERMCP_FAKE_KILLENDAR: '1',
   KILLERPDF_CLI: resolve('missing-killerpdf.exe'),
   KILLERSCAN_CLI: resolve('missing-killerscan.exe'),
   KILLERSHELL_CLI: resolve('missing-killershell.exe'),
-  KILLENDAR_CLI: resolve('missing-killendar.exe'),
+  KILLENDAR_CLI: resolve('tests/KillerMCP.Runtime.Checks/bin/Debug/net10.0/KillerMCP.Runtime.Checks.exe'),
   KILLERBENCH_CLI: resolve('missing-killerbench.exe'),
 };
 const child = spawn('dotnet', ['run', '--project', 'src/KillerMCP/KillerMCP.csproj', '--no-build'], { stdio: ['pipe', 'pipe', 'inherit'], env: environment });
@@ -76,6 +77,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'list_film_stocks', 'calculate_reciprocity',
   'killermcp_update_status',
   'killernotes_search',
+  'killendar_agenda',
 ]);
 const called = await request('tools/call', { name: 'text_statistics', arguments: { text: 'hello world' } });
 assert.deepEqual(JSON.parse(called.content[0].text), { characterCount: 11, wordCount: 2, lineCount: 1, byteSize: 11 });
@@ -145,6 +147,8 @@ const invalidUpdate = await request('tools/call', { name: 'killermcp_update_stat
 assert.equal(invalidUpdate.isError, true);
 const notes = await request('tools/call', { name: 'killernotes_search', arguments: { query: 'subnet', limit: 1 } });
 assert.equal(JSON.parse(notes.content[0].text)[0].title, 'Subnet plans');
+const agenda = await request('tools/call', { name: 'killendar_agenda', arguments: { date: '2026-09-28', days: 7, limit: 5 } });
+assert.equal(JSON.parse(agenda.content[0].text)[0].title, 'Field visit');
 child.stdin.end();
 updateServer.close();
 await rm(updateDirectory, { recursive: true, force: true });

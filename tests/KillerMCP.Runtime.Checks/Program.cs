@@ -1,17 +1,23 @@
 using KillerMCP.Runtime;
 using System.Text.Json;
 
-if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_NOTES") == "1")
+if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_NOTES") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_KILLENDAR") == "1")
 {
     var arguments = Environment.GetCommandLineArgs().Skip(1).ToArray();
     if (arguments.SequenceEqual(["--help"]))
     {
-        Console.WriteLine("search <query>");
+        if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_NOTES") == "1") Console.WriteLine("search <query>");
+        if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_KILLENDAR") == "1") Console.WriteLine("agenda <yyyy-MM-dd>");
         return;
     }
     if (arguments.Length == 4 && arguments[0] == "search" && arguments[2] == "--limit")
     {
         Console.Write(JsonSerializer.Serialize(new[] { new { title = "Subnet plans", snippet = arguments[1] } }));
+        return;
+    }
+    if (arguments.Length == 5 && arguments[0] == "agenda" && arguments[3] == "--limit")
+    {
+        Console.Write(JsonSerializer.Serialize(new[] { new { title = "Field visit", date = arguments[1], days = arguments[2] } }));
         return;
     }
     Environment.ExitCode = 2;
@@ -68,6 +74,22 @@ try
     Equal(true, (await adapter.CallAsync(invalid.RootElement, CancellationToken.None)).IsError);
     Environment.SetEnvironmentVariable("KILLERMCP_FAKE_NOTES", null);
     Console.WriteLine("PASS native KillerNotes adapter");
+
+    Environment.SetEnvironmentVariable("KILLERMCP_FAKE_KILLENDAR", "1");
+    var calendarAdapter = await KillendarAdapter.CreateAsync(Environment.ProcessPath);
+    if (calendarAdapter is null)
+    {
+        throw new InvalidOperationException("The Killendar fixture adapter was not discovered.");
+    }
+    Equal("killendar_agenda", calendarAdapter.Tool.Name);
+    using var agenda = JsonDocument.Parse("{\"date\":\"2026-09-28\",\"days\":7,\"limit\":5}");
+    var agendaResult = await calendarAdapter.CallAsync(agenda.RootElement, CancellationToken.None);
+    Equal(false, agendaResult.IsError);
+    Equal("Field visit", JsonDocument.Parse(agendaResult.Text).RootElement[0].GetProperty("title").GetString());
+    using var badDate = JsonDocument.Parse("{\"date\":\"2026-02-30\"}");
+    Equal(true, (await calendarAdapter.CallAsync(badDate.RootElement, CancellationToken.None)).IsError);
+    Environment.SetEnvironmentVariable("KILLERMCP_FAKE_KILLENDAR", null);
+    Console.WriteLine("PASS native Killendar adapter");
 }
 finally
 {

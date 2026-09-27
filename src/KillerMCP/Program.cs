@@ -25,6 +25,11 @@ if (killerNotes is not null)
 {
     appAdapters.Add(killerNotes);
 }
+var killendar = await KillendarAdapter.CreateAsync(AppDiscovery.Discover("killendar"));
+if (killendar is not null)
+{
+    appAdapters.Add(killendar);
+}
 ToolRegistry.SetAdapters(appAdapters);
 string? line;
 while ((line = Console.ReadLine()) is not null)
