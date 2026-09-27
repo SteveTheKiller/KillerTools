@@ -49,6 +49,7 @@ var checks = new (string Name, Action Run)[]
     ("bcrypt", CheckBcrypt),
     ("password strength", CheckPasswordStrength),
     ("password generation", CheckPasswordGeneration),
+    ("BIP39", CheckBip39),
     ("bounded math", CheckBoundedMath),
     ("film reciprocity", CheckFilmReciprocity),
     ("film development", CheckFilmDevelopment),
@@ -382,6 +383,30 @@ static void CheckPasswordGeneration()
     Equal(true, System.Text.RegularExpressions.Regex.IsMatch(PasswordGenerator.GeneratePronounceable(20, true), "^[bcdfghjkmnpqrstvwxz][aeiouy](?:[bcdfghjkmnpqrstvwxz][aeiouy]){8}[0-9]{2}$"));
     Equal(true, System.Text.RegularExpressions.Regex.IsMatch(PasswordGenerator.GenerateFormatted(20, "hex"), "^[0-9a-f]{20}$"));
     Equal(true, Guid.TryParse(PasswordGenerator.GenerateFormatted(20, "uuid"), out _));
+}
+
+static void CheckBip39()
+{
+    var expected = new Dictionary<string, string>
+    {
+        ["English"] = "abandon abandon abandon abandon abandon able",
+        ["Czech"] = "abdikace abdikace abdikace abdikace abdikace adresa",
+        ["French"] = "abaisser abaisser abaisser abaisser abaisser abdiquer",
+        ["Italian"] = "abaco abaco abaco abaco abaco abbinato",
+        ["Japanese"] = "あいこくしん　あいこくしん　あいこくしん　あいこくしん　あいこくしん　あいだ",
+        ["Korean"] = "가격 가격 가격 가격 가격 가난",
+        ["Portuguese"] = "abacate abacate abacate abacate abacate abalar",
+        ["Spanish"] = "ábaco ábaco ábaco ábaco ábaco abeja",
+        ["Chinese simplified"] = "的 的 的 的 的 是",
+        ["Chinese traditional"] = "的 的 的 的 的 是",
+    };
+    Equal(10, Bip39.Languages.Count);
+    foreach (var (language, mnemonic) in expected)
+    {
+        Equal(mnemonic, Bip39.EntropyToMnemonic("0000000000000000", language));
+        Equal("0000000000000000", Bip39.MnemonicToEntropy(mnemonic, language));
+    }
+    Equal(32, Bip39.GenerateEntropy().Length);
 }
 
 static void CheckBoundedMath()

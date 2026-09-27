@@ -87,6 +87,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "hmac_private" => new { hmac = TextHashes.Hmac(arguments.GetProperty("value").GetString()!, arguments.GetProperty("secret").GetString()!, arguments.GetProperty("algorithm").GetString()!, arguments.GetProperty("encoding").GetString()!) },
         "bcrypt_private" => new { matches = PasswordBcrypt.Verify(arguments.GetProperty("value").GetString()!, arguments.GetProperty("hash").GetString()!) },
         "generate_password_private" => PasswordResult(arguments),
+        "bip39_private" => Bip39Result(arguments),
         "analyze_password_private" => PasswordStrengthResult(arguments),
         "evaluate_math" => new { value = BoundedMath.Evaluate(arguments.GetProperty("expression").GetString()!) },
         "list_film_stocks" => FilmReciprocity.List().Select(stock => new { id = stock.Id, name = stock.Name, manufacturer = stock.Manufacturer, iso = stock.Iso, type = stock.Type }),
@@ -302,6 +303,14 @@ static object PasswordResult(JsonElement arguments)
         _ => PasswordGenerator.GenerateRandom(arguments.GetProperty("length").GetInt32(), arguments.GetProperty("uppercase").GetBoolean(), arguments.GetProperty("lowercase").GetBoolean(), arguments.GetProperty("numbers").GetBoolean(), arguments.GetProperty("symbols").GetBoolean(), arguments.GetProperty("excludeAmbiguous").GetBoolean(), arguments.GetProperty("requireOneOfEach").GetBoolean()),
     };
     return new { password };
+}
+
+static object Bip39Result(JsonElement arguments)
+{
+    var language = arguments.GetProperty("language").GetString()!;
+    if (arguments.TryGetProperty("mnemonic", out var mnemonic)) return new { entropy = Bip39.MnemonicToEntropy(mnemonic.GetString()!, language), mnemonic = mnemonic.GetString()! };
+    var entropy = arguments.GetProperty("entropy").GetString()!;
+    return new { entropy, mnemonic = Bip39.EntropyToMnemonic(entropy, language) };
 }
 
 static object Ipv4RangeResult(JsonElement arguments)

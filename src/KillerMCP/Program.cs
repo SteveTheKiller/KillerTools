@@ -148,6 +148,7 @@ static class ToolRegistry
         Tool("hash_text_private", "Hash private text locally using the KillerTools hash algorithms.", new { value = new { type = "string", maxLength = 8192 }, algorithm = EnumSchema("MD5", "RIPEMD160", "SHA1", "SHA3", "SHA224", "SHA256", "SHA384", "SHA512"), encoding = EnumSchema("Bin", "Hex", "Base64", "Base64url") }, ["value"]),
         Tool("hmac_private", "Calculate an HMAC locally using the KillerTools hash algorithms.", new { value = new { type = "string", maxLength = 8192 }, secret = new { type = "string", maxLength = 8192 }, algorithm = EnumSchema("MD5", "RIPEMD160", "SHA1", "SHA3", "SHA224", "SHA256", "SHA384", "SHA512"), encoding = EnumSchema("Bin", "Hex", "Base64", "Base64url") }, ["value", "secret"]),
         Tool("bcrypt_private", "Hash or compare a string with bcrypt locally.", new { value = new { type = "string", maxLength = 8192 }, action = EnumSchema("hash", "compare"), rounds = new { type = "integer", minimum = 4, maximum = 14, @default = 10 }, hash = new { type = "string", maxLength = 128 } }, ["value", "action"]),
+        Tool("bip39_private", "Generate a mnemonic or convert between entropy and a mnemonic locally using KillerTools BIP39.", new { entropy = new { type = "string", pattern = "^(?:[0-9a-f]{16}|[0-9a-f]{20}|[0-9a-f]{24}|[0-9a-f]{28}|[0-9a-f]{32})$" }, mnemonic = new { type = "string", minLength = 1, maxLength = 512 }, language = EnumSchema("English", "Czech", "French", "Italian", "Japanese", "Korean", "Portuguese", "Spanish", "Chinese simplified", "Chinese traditional") }, []),
         Tool("analyze_password_private", "Estimate password strength and crack time locally.", new { password = new { type = "string", maxLength = 8192 } }, ["password"]),
         Tool("generate_password_private", "Generate a password or passphrase locally with the KillerTools modes.", new { mode = EnumSchema("random", "passphrase", "pronounceable", "format"), length = new { type = "integer", minimum = 8, maximum = 128, @default = 20 }, uppercase = BooleanSchema(true), lowercase = BooleanSchema(true), numbers = BooleanSchema(true), symbols = BooleanSchema(true), excludeAmbiguous = BooleanSchema(true), requireOneOfEach = BooleanSchema(true), wordCount = new { type = "integer", minimum = 1, maximum = 16, @default = 6 }, wordSeparator = new { type = "string", maxLength = 8, @default = "-" }, capitalizeWords = BooleanSchema(true), appendNumber = BooleanSchema(false), format = EnumSchema("hex", "base64", "base64url", "uuid") }, []),
         Tool("evaluate_math", "Evaluate a bounded arithmetic expression.", new { expression = new { type = "string", minLength = 1, maxLength = 256 } }, ["expression"]),
@@ -255,6 +256,7 @@ static class ToolRegistry
             "hash_text_private" => new { hash = TextHashes.Hash(arguments.GetProperty("value").GetString()!, OptionalString(arguments, "algorithm", "SHA256"), OptionalString(arguments, "encoding", "Hex")) },
             "hmac_private" => new { hmac = TextHashes.Hmac(arguments.GetProperty("value").GetString()!, arguments.GetProperty("secret").GetString()!, OptionalString(arguments, "algorithm", "SHA256"), OptionalString(arguments, "encoding", "Hex")) },
             "bcrypt_private" => Bcrypt(arguments),
+            "bip39_private" => Bip39Result(arguments),
             "analyze_password_private" => PasswordStrength.Analyze(arguments.GetProperty("password").GetString()!),
             "generate_password_private" => GeneratePassword(arguments),
             "evaluate_math" => EvaluateMath(arguments),
@@ -325,6 +327,21 @@ static class ToolRegistry
         }
         catch (InvalidOperationException exception) { throw new ToolCallException(exception.Message); }
         catch (Exception) { throw new ToolCallException("Unable to generate password"); }
+    }
+    private static object Bip39Result(JsonElement arguments)
+    {
+        try
+        {
+            var entropy = OptionalNullableString(arguments, "entropy");
+            var mnemonic = OptionalNullableString(arguments, "mnemonic");
+            var language = OptionalString(arguments, "language", "English");
+            if (entropy is not null && mnemonic is not null) throw new ToolCallException("Provide entropy or a mnemonic, not both");
+            if (mnemonic is not null) return new { entropy = Bip39.MnemonicToEntropy(mnemonic, language), mnemonic };
+            entropy ??= Bip39.GenerateEntropy();
+            return new { entropy, mnemonic = Bip39.EntropyToMnemonic(entropy, language) };
+        }
+        catch (ToolCallException) { throw; }
+        catch (Exception) { throw new ToolCallException("Invalid BIP39 input"); }
     }
     private static string Locale(JsonElement arguments) => OptionalString(arguments, "locale", "en");
     private static object Localize<T>(string tool, IReadOnlyList<T> entries, string locale)

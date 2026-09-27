@@ -84,7 +84,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'otp_private', 'generate_otp_secret_private',
   'generate_ulids', 'generate_uuids', 'generate_lorem_ipsum',
   'parse_jwt_private',
-  'generate_rsa_keypair_private', 'hash_text_private', 'hmac_private', 'bcrypt_private',
+  'generate_rsa_keypair_private', 'hash_text_private', 'hmac_private', 'bcrypt_private', 'bip39_private',
   'analyze_password_private', 'generate_password_private',
   'evaluate_math',
   'list_film_stocks', 'calculate_reciprocity',
@@ -214,6 +214,10 @@ const generatedPassphrase = JSON.parse((await request('tools/call', { name: 'gen
 assert.equal(generatedPassphrase.split('-').length, 7);
 const formattedPassword = JSON.parse((await request('tools/call', { name: 'generate_password_private', arguments: { mode: 'format', format: 'base64url', length: 24 } })).content[0].text).password;
 assert.match(formattedPassword, /^[A-Za-z0-9_-]{24}$/);
+const japaneseMnemonic = JSON.parse((await request('tools/call', { name: 'bip39_private', arguments: { entropy: '0000000000000000', language: 'Japanese' } })).content[0].text);
+assert.equal(japaneseMnemonic.mnemonic, 'あいこくしん　あいこくしん　あいこくしん　あいこくしん　あいこくしん　あいだ');
+const japaneseEntropy = JSON.parse((await request('tools/call', { name: 'bip39_private', arguments: { mnemonic: japaneseMnemonic.mnemonic, language: 'Japanese' } })).content[0].text);
+assert.equal(japaneseEntropy.entropy, '0000000000000000');
 const bcryptCompare = await request('tools/call', { name: 'bcrypt_private', arguments: { value: 'private', action: 'compare', hash: JSON.parse(bcryptHash.content[0].text).hash } });
 assert.equal(JSON.parse(bcryptCompare.content[0].text).matches, true);
 const rsa = await request('tools/call', { name: 'generate_rsa_keypair_private', arguments: { bits: '2048' } });
