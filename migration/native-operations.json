@@ -52,6 +52,7 @@
   "lookup_domain_dns": "verified",
   "lookup_domain_rdap": "verified",
   "markdown_to_html": "verified",
+  "search_gifs": "verified",
   "lookup_m365_sku": "verified",
   "lookup_port_protocol": "verified",
   "lookup_windows_error": "verified",

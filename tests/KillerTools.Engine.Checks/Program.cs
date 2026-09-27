@@ -28,6 +28,7 @@ var checks = new (string Name, Action Run)[]
     ("XML and JSON conversion", CheckXmlJson),
     ("YAML and TOML conversion", CheckYamlToml),
     ("meta tag generation", CheckMetaTags),
+    ("GIF search", CheckGifSearch),
     ("cron descriptions", CheckCronDescriptions),
     ("email records", CheckEmailRecords),
     ("email headers", CheckEmailHeaders),
@@ -418,6 +419,13 @@ static void CheckMarkdown()
 {
     Equal("<h1>Hello</h1>\n<ul>\n<li>one</li>\n<li>two with <strong>bold</strong></li>\n</ul>\n", MarkdownHtml.Convert("# Hello\n\n- one\n- two with **bold**"));
     Equal("<p><a href=\"https://example.com\">link</a></p>\n<blockquote>\n<p>quoted <code>code</code></p>\n</blockquote>\n", MarkdownHtml.Convert("[link](https://example.com)\n\n> quoted `code`"));
+}
+
+static void CheckGifSearch()
+{
+    const string response = "{\"data\":[{\"id\":\"abc\",\"title\":\"Test GIF\",\"images\":{\"fixed_height_small\":{\"url\":\"https://images.example/preview.gif\"},\"original\":{\"url\":\"https://images.example/full.gif\"}}}]}";
+    using var client = new HttpClient(new StaticHttpHandler(response));
+    Equal(new GifSearchResult("abc", "Test GIF", "https://images.example/preview.gif", "https://images.example/full.gif"), GifSearch.SearchAsync("test", 1, client).GetAwaiter().GetResult().Single());
 }
 
 static void CheckTextConversions()

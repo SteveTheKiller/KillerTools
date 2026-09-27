@@ -111,6 +111,7 @@ static class ToolRegistry
         Tool("convert_toml", "Convert TOML text to JSON or YAML using KillerTools.", new { text = StructuredTextSchema(), to = EnumSchema("json", "yaml") }, ["text", "to"]),
         Tool("format_yaml", "Prettify YAML with optional key sorting using KillerTools YAML Viewer.", new { text = StructuredTextSchema(), indentSize = new { type = "integer", minimum = 1, maximum = 10, @default = 2 }, sortKeys = BooleanSchema(false) }, ["text"]),
         Tool("generate_meta_tags", "Generate Open Graph and Twitter meta tags using KillerTools.", new { type = EnumSchema("website", "article", "book", "profile", "music.song", "music.album", "music.playlist", "music.radio_station", "video.movie", "video.episode", "video.tv_show", "video.other"), fields = new { type = "object", maxProperties = 30, additionalProperties = new { type = "string", maxLength = 1024 } } }, []),
+        Tool("search_gifs", "Search GIFs through the fixed KillerTools GIF proxy and return links and titles.", new { query = new { type = "string", minLength = 1, maxLength = 80 }, limit = new { type = "integer", minimum = 1, maximum = 20, @default = 10 } }, ["query"]),
         Tool("describe_cron", "Validate and describe a cron expression using KillerTools.", new { expression = new { type = "string", minLength = 1, maxLength = 128 }, use24HourTimeFormat = BooleanSchema(true), dayOfWeekStartIndexZero = BooleanSchema(true) }, ["expression"]),
         Tool("calculate_nd_exposure", "Calculate exposure time with a neutral density filter.", new { baseSeconds = NumberSchema(), stops = NumberSchema() }, ["baseSeconds", "stops"]),
         Tool("calculate_exposure_equivalence", "Calculate equivalent shutter speed after an aperture change.", new { shutterSeconds = NumberSchema(), originalAperture = NumberSchema(), targetAperture = NumberSchema() }, ["shutterSeconds", "originalAperture", "targetAperture"]),
@@ -210,6 +211,7 @@ static class ToolRegistry
             "convert_toml" => StructuredConvert(arguments, "toml"),
             "format_yaml" => YamlFormat(arguments),
             "generate_meta_tags" => MetaTagResult(arguments),
+            "search_gifs" => SearchGifs(arguments),
             "describe_cron" => CronResult(arguments),
             "calculate_nd_exposure" => new { seconds = ExposureCalculators.WithNeutralDensity(arguments.GetProperty("baseSeconds").GetDouble(), arguments.GetProperty("stops").GetDouble()) },
             "calculate_exposure_equivalence" => new { shutterSeconds = ExposureCalculators.EquivalentShutter(arguments.GetProperty("shutterSeconds").GetDouble(), arguments.GetProperty("originalAperture").GetDouble(), arguments.GetProperty("targetAperture").GetDouble()) },
@@ -481,6 +483,11 @@ static class ToolRegistry
         try { return new { text = MarkdownHtml.Convert(arguments.GetProperty("markdown").GetString()!) }; }
         catch (InvalidDataException) { throw new ToolCallException("Output is too large"); }
         catch (Exception) { throw new ToolCallException("Invalid Markdown"); }
+    }
+    private static object SearchGifs(JsonElement arguments)
+    {
+        try { return GifSearch.SearchAsync(arguments.GetProperty("query").GetString()!, Limit(arguments)).GetAwaiter().GetResult(); }
+        catch (Exception) { throw new ToolCallException("GIF search is unavailable"); }
     }
     private static object RdapLookup(JsonElement arguments)
     {

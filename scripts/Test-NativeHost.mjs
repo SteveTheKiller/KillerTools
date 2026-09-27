@@ -72,7 +72,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'lookup_m365_sku', 'lookup_port_protocol', 'lookup_windows_error', 'lookup_windows_event',
   'list_killer_modules', 'list_killer_scripts',
   'diff_text', 'format_json', 'minify_json', 'diff_json', 'convert_xml_json', 'format_xml',
-  'convert_json', 'convert_yaml', 'convert_toml', 'format_yaml', 'generate_meta_tags', 'describe_cron', 'calculate_nd_exposure', 'calculate_exposure_equivalence',
+  'convert_json', 'convert_yaml', 'convert_toml', 'format_yaml', 'generate_meta_tags', 'search_gifs', 'describe_cron', 'calculate_nd_exposure', 'calculate_exposure_equivalence',
   'calculate_depth_of_field', 'generate_svg_placeholder', 'calculate_chmod',
   'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv',
   'parse_url', 'lookup_domain_dns', 'lookup_domain_rdap', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers',

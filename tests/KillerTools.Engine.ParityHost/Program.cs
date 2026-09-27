@@ -58,6 +58,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "convert_toml" => StructuredConversion(arguments, "toml"),
         "format_yaml" => new { text = StructuredTextConverter.FormatYaml(arguments.GetProperty("text").GetString()!, arguments.GetProperty("indentSize").GetInt32(), arguments.GetProperty("sortKeys").GetBoolean()) },
         "generate_meta_tags" => MetaTagResult(arguments),
+        "search_gifs" => GifResult(arguments),
         "describe_cron" => new { description = CronDescriptions.Describe(arguments.GetProperty("expression").GetString()!, arguments.GetProperty("use24HourTimeFormat").GetBoolean(), arguments.GetProperty("dayOfWeekStartIndexZero").GetBoolean()) },
         "json_to_csv" => new { csv = JsonCsv.Convert(arguments.GetProperty("rows")) },
         "parse_url" => UrlResult(arguments),
@@ -274,6 +275,19 @@ static object RdapResult(JsonElement arguments)
 {
     var result = DomainRdapLookup.LookupAsync(arguments.GetProperty("domain").GetString()!).GetAwaiter().GetResult();
     return new { domain = result.Domain, handle = result.Handle, status = result.Status, events = result.Events.Select(value => new { eventAction = value.EventAction, eventDate = value.EventDate }), nameservers = result.Nameservers, dnssecSigned = result.DnssecSigned };
+}
+
+static object GifResult(JsonElement arguments)
+{
+    try
+    {
+        var results = GifSearch.SearchAsync(arguments.GetProperty("query").GetString()!, arguments.GetProperty("limit").GetInt32()).GetAwaiter().GetResult();
+        return results.Select(value => new { id = value.Id, title = value.Title, previewUrl = value.PreviewUrl, fullUrl = value.FullUrl });
+    }
+    catch
+    {
+        return new { error = "GIF search is unavailable" };
+    }
 }
 
 static object Ipv4RangeResult(JsonElement arguments)
