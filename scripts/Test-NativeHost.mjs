@@ -67,7 +67,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'text_statistics', 'convert_case', 'encode_base64', 'decode_base64', 'text_to_ascii_binary',
   'ascii_binary_to_text', 'arabic_to_roman', 'roman_to_arabic', 'text_to_nato_alphabet',
   'convert_integer_base', 'convert_temperature', 'calculate_percentage', 'escape_html_entities',
-  'unescape_html_entities',
+  'unescape_html_entities', 'markdown_to_html',
   'convert_date_time', 'lookup_exchange_ndr', 'lookup_group_policy', 'lookup_http_status',
   'lookup_m365_sku', 'lookup_port_protocol', 'lookup_windows_error', 'lookup_windows_event',
   'list_killer_modules', 'list_killer_scripts',

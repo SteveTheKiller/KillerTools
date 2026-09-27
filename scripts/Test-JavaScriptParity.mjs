@@ -95,6 +95,9 @@ const requests = [
   { operation: 'json_to_csv', arguments: { rows: [{ text: 'line 1\nline 2', active: true, nested: { a: 1 } }] } },
   { operation: 'parse_url', arguments: { url: 'https://user:pass@example.com:8443/a%20b?x=1&x=two+words#top' } },
   { operation: 'parse_url', arguments: { url: 'http://example.com/' } },
+  { operation: 'markdown_to_html', arguments: { markdown: '# Hello\n\n- one\n- two with **bold**' } },
+  { operation: 'markdown_to_html', arguments: { markdown: '[link](https://example.com)\n\n> quoted `code`' } },
+  { operation: 'markdown_to_html', arguments: { markdown: '```csharp\nConsole.WriteLine("hi");\n```' } },
   { operation: 'lookup_domain_dns', arguments: { name: 'nonexistent-killertools-parity.invalid', type: 'A' } },
   { operation: 'lookup_domain_rdap', arguments: { domain: 'example.com' } },
   { operation: 'generate_spf_record', arguments: { providers: ['include:_spf.google.com', 'include:_spf.google.com'], ipAddresses: ['192.0.2.0/24', '2001:db8::/32'], enforcement: '-all' } },
@@ -144,7 +147,7 @@ const requests = [
   { operation: 'calculate_film_development', arguments: { filmName: 'Ilford HP5 Plus', developerId: 'd76', dilutionIndex: 1, temperatureC: 24, pushPullStops: 1, tankMl: 501 } },
 ];
 
-const oracleOperations = new Set(['convert_date_time', 'calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'format_json', 'minify_json', 'diff_json', 'convert_xml_json', 'format_xml', 'convert_json', 'convert_yaml', 'convert_toml', 'format_yaml', 'generate_meta_tags', 'describe_cron', 'json_to_csv', 'parse_url', 'lookup_domain_dns', 'lookup_domain_rdap', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers', 'test_regex', 'lookup_http_status', 'lookup_port_protocol', 'lookup_exchange_ndr', 'lookup_m365_sku', 'lookup_windows_error', 'lookup_windows_event', 'lookup_group_policy', 'list_killer_modules', 'list_killer_scripts', 'encode_file_base64_local', 'otp_private', 'generate_uuids', 'generate_lorem_ipsum', 'parse_jwt_private', 'hash_text_private', 'hmac_private', 'bcrypt_private', 'analyze_password_private', 'evaluate_math', 'list_film_stocks', 'calculate_reciprocity', 'list_film_development_options', 'calculate_film_development']);
+const oracleOperations = new Set(['convert_date_time', 'calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'markdown_to_html', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'format_json', 'minify_json', 'diff_json', 'convert_xml_json', 'format_xml', 'convert_json', 'convert_yaml', 'convert_toml', 'format_yaml', 'generate_meta_tags', 'describe_cron', 'json_to_csv', 'parse_url', 'lookup_domain_dns', 'lookup_domain_rdap', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers', 'test_regex', 'lookup_http_status', 'lookup_port_protocol', 'lookup_exchange_ndr', 'lookup_m365_sku', 'lookup_windows_error', 'lookup_windows_event', 'lookup_group_policy', 'list_killer_modules', 'list_killer_scripts', 'encode_file_base64_local', 'otp_private', 'generate_uuids', 'generate_lorem_ipsum', 'parse_jwt_private', 'hash_text_private', 'hmac_private', 'bcrypt_private', 'analyze_password_private', 'evaluate_math', 'list_film_stocks', 'calculate_reciprocity', 'list_film_development_options', 'calculate_film_development']);
 const oracle = spawn(process.execPath, [resolve(site, 'mcp/dist/killermcp.mjs')], { cwd: resolve(site, 'mcp'), stdio: ['pipe', 'pipe', 'pipe'] });
 let oracleBuffer = '';
 let oracleError = '';

@@ -43,6 +43,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "calculate_depth_of_field" => DepthOfFieldResult(arguments),
         "escape_html_entities" => new { text = HtmlEntities.Escape(arguments.GetProperty("text").GetString()!) },
         "unescape_html_entities" => new { text = HtmlEntities.Unescape(arguments.GetProperty("text").GetString()!) },
+        "markdown_to_html" => new { text = MarkdownHtml.Convert(arguments.GetProperty("markdown").GetString()!) },
         "diff_text" => TextDiffResult(arguments),
         "expand_ipv4_range" => Ipv4RangeResult(arguments),
         "calculate_ipv4_subnet" => Ipv4SubnetResult(arguments),

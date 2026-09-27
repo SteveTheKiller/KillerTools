@@ -89,6 +89,7 @@ static class ToolRegistry
         Tool("calculate_percentage", "Calculate percentages and percentage changes.", new { mode = EnumSchema("percent_of", "what_percent", "change"), x = NumberSchema(), y = NumberSchema() }, ["mode", "x", "y"]),
         Tool("escape_html_entities", "Escape HTML entities.", new { text = StringSchema() }, ["text"]),
         Tool("unescape_html_entities", "Unescape HTML entities.", new { text = StringSchema() }, ["text"]),
+        Tool("markdown_to_html", "Convert Markdown to HTML using KillerTools Markdown to HTML.", new { markdown = StringSchema() }, ["markdown"]),
         Tool("convert_date_time", "Convert a date among KillerTools formats.", new { value = StringSchema(), inputFormat = EnumSchema("iso8601", "iso9075", "rfc3339", "rfc7231", "unix_seconds", "timestamp_ms", "utc", "mongo_object_id", "excel") }, ["value", "inputFormat"]),
         LookupTool("lookup_exchange_ndr", "Search the Exchange non-delivery report reference."),
         LookupTool("lookup_group_policy", "Search the Group Policy reference."),
@@ -187,6 +188,7 @@ static class ToolRegistry
             "calculate_percentage" => Percentage(arguments),
             "escape_html_entities" => new { text = HtmlEntities.Escape(arguments.GetProperty("text").GetString()!) },
             "unescape_html_entities" => new { text = HtmlEntities.Unescape(arguments.GetProperty("text").GetString()!) },
+            "markdown_to_html" => MarkdownToHtml(arguments),
             "convert_date_time" => DateTimeConverter.Convert(arguments.GetProperty("value").GetString()!, arguments.GetProperty("inputFormat").GetString()!),
             "lookup_exchange_ndr" => Localize("exchange-ndr-lookup", MicrosoftReferenceLookups.SearchNdrs(Query(arguments), Limit(arguments)), Locale(arguments)),
             "lookup_group_policy" => Localize("group-policy-reference", GroupPolicyLookup.Search(Query(arguments), Limit(arguments)), Locale(arguments)),
@@ -473,6 +475,12 @@ static class ToolRegistry
             return new { status = result.Status, answers = result.Answers.Select(answer => new { name = answer.Name, type = answer.Type, ttl = answer.Ttl, data = answer.Data }) };
         }
         catch (Exception) { throw new ToolCallException("DNS lookup is unavailable"); }
+    }
+    private static object MarkdownToHtml(JsonElement arguments)
+    {
+        try { return new { text = MarkdownHtml.Convert(arguments.GetProperty("markdown").GetString()!) }; }
+        catch (InvalidDataException) { throw new ToolCallException("Output is too large"); }
+        catch (Exception) { throw new ToolCallException("Invalid Markdown"); }
     }
     private static object RdapLookup(JsonElement arguments)
     {

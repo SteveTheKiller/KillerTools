@@ -19,6 +19,7 @@ var checks = new (string Name, Action Run)[]
     ("Lorem Ipsum generation", CheckLoremIpsum),
     ("date time conversions", CheckDateTimeConversions),
     ("HTML entities and text diff", CheckHtmlAndDiff),
+    ("Markdown conversion", CheckMarkdown),
     ("IP network calculations", CheckNetworkCalculations),
     ("DNS lookup", CheckDnsLookup),
     ("RDAP lookup", CheckRdapLookup),
@@ -411,6 +412,12 @@ static void CheckHtmlAndDiff()
     Equal(new TextDiffLine("context", "one"), difference.Lines[0]);
     Equal(new TextDiffLine("add", "new"), difference.Lines[1]);
     Equal(new TextDiffLine("remove", "two"), difference.Lines[2]);
+}
+
+static void CheckMarkdown()
+{
+    Equal("<h1>Hello</h1>\n<ul>\n<li>one</li>\n<li>two with <strong>bold</strong></li>\n</ul>\n", MarkdownHtml.Convert("# Hello\n\n- one\n- two with **bold**"));
+    Equal("<p><a href=\"https://example.com\">link</a></p>\n<blockquote>\n<p>quoted <code>code</code></p>\n</blockquote>\n", MarkdownHtml.Convert("[link](https://example.com)\n\n> quoted `code`"));
 }
 
 static void CheckTextConversions()
