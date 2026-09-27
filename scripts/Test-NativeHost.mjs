@@ -36,6 +36,9 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'lookup_m365_sku', 'lookup_port_protocol', 'lookup_windows_error', 'lookup_windows_event',
   'diff_text', 'calculate_nd_exposure', 'calculate_exposure_equivalence',
   'calculate_depth_of_field', 'generate_svg_placeholder', 'calculate_chmod',
+  'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv',
+  'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers',
+  'test_regex',
 ]);
 const called = await request('tools/call', { name: 'text_statistics', arguments: { text: 'hello world' } });
 assert.deepEqual(JSON.parse(called.content[0].text), { characterCount: 11, wordCount: 2, lineCount: 1, byteSize: 11 });
@@ -51,5 +54,11 @@ const exposure = await request('tools/call', { name: 'calculate_nd_exposure', ar
 assert.deepEqual(JSON.parse(exposure.content[0].text), { seconds: 32 });
 const difference = await request('tools/call', { name: 'diff_text', arguments: { left: 'one\ntwo', right: 'one\nnew' } });
 assert.equal(JSON.parse(difference.content[0].text).added, 1);
+const subnet = await request('tools/call', { name: 'calculate_ipv4_subnet', arguments: { address: '198.51.100.27/24' } });
+assert.equal(JSON.parse(subnet.content[0].text).cidr, '198.51.100.0/24');
+const spf = await request('tools/call', { name: 'generate_spf_record', arguments: { providers: ['include:_spf.google.com'], ipAddresses: ['198.51.100.7'], enforcement: '-all' } });
+assert.deepEqual(JSON.parse(spf.content[0].text), { record: 'v=spf1 include:_spf.google.com ip4:198.51.100.7 -all' });
+const regex = await request('tools/call', { name: 'test_regex', arguments: { pattern: 'a+', text: 'caaab' } });
+assert.equal(JSON.parse(regex.content[0].text).matches.length, 1);
 child.stdin.end();
 console.log('Native KillerMCP stdio handshake, tool listing, and tool call passed.');

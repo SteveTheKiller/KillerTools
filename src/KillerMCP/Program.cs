@@ -7,6 +7,7 @@ using KillerTools.Engine.Reference;
 using KillerTools.Engine.SystemTools;
 using KillerTools.Engine.Documents;
 using KillerTools.Engine.Photography;
+using KillerTools.Engine.Network;
 
 Console.InputEncoding = Encoding.UTF8;
 Console.OutputEncoding = Encoding.UTF8;
@@ -70,6 +71,15 @@ static class ToolRegistry
         Tool("calculate_depth_of_field", "Calculate depth of field.", new { focalLengthMm = NumberSchema(), aperture = NumberSchema(), focusDistance = NumberSchema(), focusUnit = EnumSchema("m", "ft"), circleOfConfusionMm = NumberSchema() }, ["focalLengthMm", "aperture", "focusDistance", "focusUnit", "circleOfConfusionMm"]),
         Tool("generate_svg_placeholder", "Generate an SVG placeholder image.", new { width = IntegerSchema(1, 4096), height = IntegerSchema(1, 4096), fontSize = new { type = "integer", minimum = 1, maximum = 512, @default = 26 }, bgColor = new { type = "string", pattern = "^#[0-9a-f]{6}$", @default = "#cccccc" }, fgColor = new { type = "string", pattern = "^#[0-9a-f]{6}$", @default = "#333333" }, useExactSize = BooleanSchema(true), customText = new { type = "string", maxLength = 256, @default = "" } }, ["width", "height"]),
         Tool("calculate_chmod", "Calculate octal and symbolic Unix permissions.", new { permissions = PermissionSetSchema() }, ["permissions"]),
+        Tool("expand_ipv4_range", "Find the smallest covering CIDR block for an IPv4 address range.", new { startIp = new { type = "string", maxLength = 15 }, endIp = new { type = "string", maxLength = 15 } }, ["startIp", "endIp"]),
+        Tool("calculate_ipv4_subnet", "Calculate IPv4 network information.", new { address = new { type = "string", minLength = 1, maxLength = 32 } }, ["address"]),
+        Tool("generate_ipv6_ula", "Generate IPv6 unique local address ranges from a MAC address.", new { macAddress = new { type = "string", pattern = "^([0-9a-f]{2}:){5}[0-9a-f]{2}$" }, timestampMs = new { type = "integer", minimum = 0L, maximum = 8_640_000_000_000_000L } }, ["macAddress"]),
+        Tool("json_to_csv", "Convert an array of JSON objects to CSV.", new { rows = new { type = "array", minItems = 1, maxItems = 100, items = new { type = "object" } } }, ["rows"]),
+        Tool("parse_url", "Parse a URL into its parts and query parameters.", new { url = StringSchema() }, ["url"]),
+        Tool("generate_spf_record", "Build an SPF TXT record.", new { providers = StringArraySchema(15), ipAddresses = StringArraySchema(20), enforcement = EnumSchema("-all", "~all", "?all") }, []),
+        Tool("generate_dmarc_record", "Build a DMARC TXT record.", new { policy = EnumSchema("reject", "quarantine", "none"), subdomainPolicy = EnumSchema("reject", "quarantine", "none", ""), percentage = new { type = "integer", minimum = 0, maximum = 100, @default = 100 }, ruaEmails = StringArraySchema(5), rufEmails = StringArraySchema(5), adkim = EnumSchema("", "s"), aspf = EnumSchema("", "s") }, []),
+        Tool("parse_email_headers", "Parse message headers, delivery hops, authentication results, and spam signals.", new { headers = new { type = "string", minLength = 1, maxLength = 16_384 } }, ["headers"]),
+        Tool("test_regex", "Match text using safe RE2 syntax.", new { pattern = new { type = "string", minLength = 1, maxLength = 256 }, text = new { type = "string", maxLength = 4096 }, global = BooleanSchema(true), ignoreCase = BooleanSchema(false), multiline = BooleanSchema(false), dotAll = BooleanSchema(true) }, ["pattern", "text"]),
     ];
 
     public static object Call(JsonElement parameters, JsonSerializerOptions json)
@@ -106,6 +116,15 @@ static class ToolRegistry
             "calculate_depth_of_field" => ExposureCalculators.DepthOfField(arguments.GetProperty("focalLengthMm").GetDouble(), arguments.GetProperty("aperture").GetDouble(), arguments.GetProperty("focusDistance").GetDouble(), arguments.GetProperty("focusUnit").GetString()!, arguments.GetProperty("circleOfConfusionMm").GetDouble()),
             "generate_svg_placeholder" => Svg(arguments),
             "calculate_chmod" => Chmod(arguments),
+            "expand_ipv4_range" => Ipv4Tools.CoverRange(arguments.GetProperty("startIp").GetString()!, arguments.GetProperty("endIp").GetString()!),
+            "calculate_ipv4_subnet" => Ipv4Subnet(arguments),
+            "generate_ipv6_ula" => Ipv6Ula.Generate(arguments.GetProperty("macAddress").GetString()!, arguments.TryGetProperty("timestampMs", out var timestamp) ? timestamp.GetInt64() : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()),
+            "json_to_csv" => new { csv = JsonCsv.Convert(arguments.GetProperty("rows")) },
+            "parse_url" => UrlParser.Parse(arguments.GetProperty("url").GetString()!),
+            "generate_spf_record" => new { record = EmailRecords.BuildSpf(StringArray(arguments, "providers"), StringArray(arguments, "ipAddresses"), OptionalString(arguments, "enforcement", "-all")) },
+            "generate_dmarc_record" => new { record = EmailRecords.BuildDmarc(OptionalString(arguments, "policy", "reject"), OptionalString(arguments, "subdomainPolicy", ""), OptionalInteger(arguments, "percentage", 100), StringArray(arguments, "ruaEmails"), StringArray(arguments, "rufEmails"), OptionalString(arguments, "adkim", ""), OptionalString(arguments, "aspf", "")) },
+            "parse_email_headers" => EmailHeaderParser.Parse(arguments.GetProperty("headers").GetString()!),
+            "test_regex" => SafeRegex.Test(arguments.GetProperty("pattern").GetString()!, arguments.GetProperty("text").GetString()!, OptionalBoolean(arguments, "global", true), OptionalBoolean(arguments, "ignoreCase"), OptionalBoolean(arguments, "multiline"), OptionalBoolean(arguments, "dotAll", true)),
             _ => throw new InvalidOperationException($"Unknown tool: {name}"),
         };
         return new { content = new[] { new { type = "text", text = JsonSerializer.Serialize(value, json) } } };
@@ -120,12 +139,16 @@ static class ToolRegistry
     private static object IntegerSchema(int minimum, int maximum) => new { type = "integer", minimum, maximum };
     private static object NumberSchema() => new { type = "number" };
     private static object EnumSchema(params string[] values) => new { type = "string", @enum = values };
+    private static object StringArraySchema(int maximum) => new { type = "array", maxItems = maximum, items = new { type = "string" }, @default = Array.Empty<string>() };
     private static object PermissionSetSchema()
     {
         var group = new { type = "object", properties = new { read = new { type = "boolean" }, write = new { type = "boolean" }, execute = new { type = "boolean" } }, required = new[] { "read", "write", "execute" }, additionalProperties = false };
         return new { type = "object", properties = new { owner = group, group, @public = group }, required = new[] { "owner", "group", "public" }, additionalProperties = false };
     }
-    private static bool OptionalBoolean(JsonElement arguments, string name) => arguments.TryGetProperty(name, out var value) && value.GetBoolean();
+    private static bool OptionalBoolean(JsonElement arguments, string name, bool defaultValue = false) => arguments.TryGetProperty(name, out var value) ? value.GetBoolean() : defaultValue;
+    private static string OptionalString(JsonElement arguments, string name, string defaultValue) => arguments.TryGetProperty(name, out var value) ? value.GetString()! : defaultValue;
+    private static int OptionalInteger(JsonElement arguments, string name, int defaultValue) => arguments.TryGetProperty(name, out var value) ? value.GetInt32() : defaultValue;
+    private static string[] StringArray(JsonElement arguments, string name) => arguments.TryGetProperty(name, out var values) ? values.EnumerateArray().Select(value => value.GetString()!).ToArray() : [];
     private static string Query(JsonElement arguments) => arguments.GetProperty("query").GetString()!;
     private static int Limit(JsonElement arguments) => arguments.TryGetProperty("limit", out var value) ? value.GetInt32() : 10;
     private static object Percentage(JsonElement arguments)
@@ -160,5 +183,24 @@ static class ToolRegistry
             return new(group.GetProperty("read").GetBoolean(), group.GetProperty("write").GetBoolean(), group.GetProperty("execute").GetBoolean());
         }
         return UnixPermissions.Calculate(new(Group("owner"), Group("group"), Group("public")));
+    }
+    private static object Ipv4Subnet(JsonElement arguments)
+    {
+        var subnet = Ipv4Tools.CalculateSubnet(arguments.GetProperty("address").GetString()!);
+        var value = new Dictionary<string, object?>
+        {
+            ["cidr"] = subnet.Cidr,
+            ["networkAddress"] = subnet.NetworkAddress,
+            ["networkMask"] = subnet.NetworkMask,
+            ["prefixLength"] = subnet.PrefixLength,
+            ["wildcardMask"] = subnet.WildcardMask,
+            ["size"] = subnet.Size,
+            ["usableHosts"] = subnet.UsableHosts,
+            ["firstAddress"] = subnet.FirstAddress,
+            ["lastAddress"] = subnet.LastAddress,
+            ["ipClass"] = subnet.IpClass,
+        };
+        if (subnet.BroadcastAddress is not null) value["broadcastAddress"] = subnet.BroadcastAddress;
+        return value;
     }
 }
