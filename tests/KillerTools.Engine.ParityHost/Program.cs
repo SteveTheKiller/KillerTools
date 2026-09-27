@@ -64,6 +64,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "json_to_csv" => new { csv = JsonCsv.Convert(arguments.GetProperty("rows")) },
         "parse_url" => UrlResult(arguments),
         "parse_user_agent" => UserAgentParser.Parse(arguments.GetProperty("userAgent").GetString()!),
+        "parse_phone_number" => PhoneNumberParser.Parse(arguments.GetProperty("phone").GetString()!, arguments.TryGetProperty("defaultCountry", out var country) ? country.GetString() : null),
         "lookup_domain_dns" => DnsResult(arguments),
         "lookup_domain_rdap" => RdapResult(arguments),
         "lookup_cve" => CveLookup.LookupAsync(arguments.GetProperty("query").GetString()!).GetAwaiter().GetResult(),

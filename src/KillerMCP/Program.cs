@@ -135,6 +135,7 @@ static class ToolRegistry
         Tool("json_to_csv", "Convert an array of JSON objects to CSV.", new { rows = new { type = "array", minItems = 1, maxItems = 100, items = new { type = "object" } } }, ["rows"]),
         Tool("parse_url", "Parse a URL into its parts and query parameters.", new { url = StringSchema() }, ["url"]),
         Tool("parse_user_agent", "Parse a user agent string using KillerTools.", new { userAgent = new { type = "string", minLength = 1, maxLength = 1024 } }, ["userAgent"]),
+        Tool("parse_phone_number", "Parse, validate, and format a phone number using KillerTools.", new { phone = new { type = "string", minLength = 1, maxLength = 64, pattern = "^[0-9 +\\-()]+$" }, defaultCountry = new { type = "string", minLength = 2, maxLength = 2 } }, ["phone"]),
         Tool("lookup_domain_dns", "Query DNS records through Cloudflare DNS, as used by KillerTools Domain Lookup.", new { name = new { type = "string", minLength = 4, maxLength = 253 }, type = EnumSchema("A", "AAAA", "MX", "TXT", "CNAME", "NS", "CAA", "SRV") }, ["name"]),
         Tool("lookup_domain_rdap", "Look up public domain registration details through RDAP, as used by KillerTools Domain Lookup.", new { domain = new { type = "string", minLength = 4, maxLength = 253 } }, ["domain"]),
         Tool("lookup_cve", "Look up a CVE ID or search terms through the same NVD proxy used by KillerTools. Returns bounded vulnerability summaries and named multi-CVE exploit chains.", new { query = new { type = "string", minLength = 2, maxLength = 80 } }, ["query"]),
@@ -249,6 +250,7 @@ static class ToolRegistry
             "json_to_csv" => new { csv = JsonCsv.Convert(arguments.GetProperty("rows")) },
             "parse_url" => UrlParser.Parse(arguments.GetProperty("url").GetString()!),
             "parse_user_agent" => UserAgentParser.Parse(arguments.GetProperty("userAgent").GetString()!),
+            "parse_phone_number" => PhoneNumber(arguments),
             "lookup_domain_dns" => DnsLookup(arguments),
             "lookup_domain_rdap" => RdapLookup(arguments),
             "lookup_cve" => Cve(arguments),
@@ -624,6 +626,21 @@ static class ToolRegistry
     {
         try { return CveLookup.LookupAsync(arguments.GetProperty("query").GetString()!).GetAwaiter().GetResult(); }
         catch { throw new ToolCallException("CVE lookup is unavailable"); }
+    }
+    private static object PhoneNumber(JsonElement arguments)
+    {
+        try
+        {
+            return PhoneNumberParser.Parse(arguments.GetProperty("phone").GetString()!, OptionalNullableString(arguments, "defaultCountry"));
+        }
+        catch (ArgumentException exception) when (exception.Message.StartsWith("Unknown default country code", StringComparison.Ordinal))
+        {
+            throw new ToolCallException("Unknown default country code");
+        }
+        catch
+        {
+            throw new ToolCallException("Invalid phone number");
+        }
     }
     private static object KillerScripts(JsonElement arguments)
     {

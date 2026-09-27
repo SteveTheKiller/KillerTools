@@ -26,6 +26,7 @@ var checks = new (string Name, Action Run)[]
     ("CVE lookup", CheckCveLookup),
     ("URL and CSV conversions", CheckUrlAndCsv),
     ("user agent parsing", CheckUserAgentParsing),
+    ("phone number parsing", CheckPhoneNumberParsing),
     ("QR code generation", CheckQrCodes),
     ("JSON5 formatting and diff", CheckStructuredJson),
     ("XML and JSON conversion", CheckXmlJson),
@@ -90,6 +91,24 @@ static void CheckUserAgentParsing()
     Equal("Windows", chrome.Os["name"]);
     Equal("amd64", chrome.Cpu["architecture"]);
     Equal(0, UserAgentParser.Parse("curl/8.5.0").Browser.Count);
+}
+
+static void CheckPhoneNumberParsing()
+{
+    var us = PhoneNumberParser.Parse("+1 415 555 2671");
+    Equal("US", us.CountryCode);
+    Equal("United States", us.Country);
+    Equal("+1", us.CallingCode);
+    Equal(true, us.IsValid);
+    Equal("FIXED_LINE_OR_MOBILE", us.Type);
+    Equal("+14155552671", us.E164);
+    Equal("+1 415 555 2671", us.International);
+    Equal("tel:+14155552671", us.Rfc3966);
+
+    var uk = PhoneNumberParser.Parse("020 7946 0018", "GB");
+    Equal("GB", uk.CountryCode);
+    Equal("+442079460018", uk.E164);
+    Throws<ArgumentException>(() => PhoneNumberParser.Parse("020 7946 0018", "ZZ"));
 }
 
 static void CheckQrCodes()
