@@ -27,6 +27,7 @@ var checks = new (string Name, Action Run)[]
     ("URL and CSV conversions", CheckUrlAndCsv),
     ("user agent parsing", CheckUserAgentParsing),
     ("phone number parsing", CheckPhoneNumberParsing),
+    ("color conversion", CheckColorConversion),
     ("QR code generation", CheckQrCodes),
     ("JSON5 formatting and diff", CheckStructuredJson),
     ("XML and JSON conversion", CheckXmlJson),
@@ -109,6 +110,16 @@ static void CheckPhoneNumberParsing()
     Equal("GB", uk.CountryCode);
     Equal("+442079460018", uk.E164);
     Throws<ArgumentException>(() => PhoneNumberParser.Parse("020 7946 0018", "ZZ"));
+}
+
+static void CheckColorConversion()
+{
+    var green = ColorConverter.Convert("#1ea54c");
+    Equal("rgb(30, 165, 76)", green.Rgb);
+    Equal("#1ea54c", green.Hex);
+    Equal("rebeccapurple", ColorConverter.Convert("rebeccapurple").Name);
+    Equal("#ff0000", ColorConverter.Convert("device-cmyk(0% 100% 100% 0%)").Hex);
+    Throws<FormatException>(() => ColorConverter.Convert("not-a-color"));
 }
 
 static void CheckQrCodes()

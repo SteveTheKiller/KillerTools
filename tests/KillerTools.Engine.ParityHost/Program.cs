@@ -65,6 +65,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "parse_url" => UrlResult(arguments),
         "parse_user_agent" => UserAgentParser.Parse(arguments.GetProperty("userAgent").GetString()!),
         "parse_phone_number" => PhoneNumberParser.Parse(arguments.GetProperty("phone").GetString()!, arguments.TryGetProperty("defaultCountry", out var country) ? country.GetString() : null),
+        "convert_color" => ColorConverter.Convert(arguments.GetProperty("color").GetString()!),
         "lookup_domain_dns" => DnsResult(arguments),
         "lookup_domain_rdap" => RdapResult(arguments),
         "lookup_cve" => CveLookup.LookupAsync(arguments.GetProperty("query").GetString()!).GetAwaiter().GetResult(),
