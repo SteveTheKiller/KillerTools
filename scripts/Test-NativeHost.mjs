@@ -1,10 +1,25 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { createServer } from 'node:http';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const child = spawn('dotnet', ['run', '--project', 'src/KillerMCP/KillerMCP.csproj', '--no-build'], { stdio: ['pipe', 'pipe', 'inherit'] });
+const updateDirectory = await mkdtemp(join(tmpdir(), 'killermcp-update-'));
+let updateRequests = 0;
+const updateServer = createServer((request, response) => {
+  updateRequests++;
+  response.writeHead(200, { 'Content-Type': 'application/json' });
+  response.end(JSON.stringify({ tag_name: 'v0.1.3' }));
+});
+await new Promise(resolve => updateServer.listen(0, '127.0.0.1', resolve));
+const updateAddress = updateServer.address();
+const environment = {
+  ...process.env,
+  KILLERMCP_UPDATE_API: `http://127.0.0.1:${updateAddress.port}/latest`,
+  KILLERMCP_UPDATE_CACHE: join(updateDirectory, 'status.json'),
+};
+const child = spawn('dotnet', ['run', '--project', 'src/KillerMCP/KillerMCP.csproj', '--no-build'], { stdio: ['pipe', 'pipe', 'inherit'], env: environment });
 let buffer = '';
 const pending = new Map();
 child.stdout.setEncoding('utf8');
@@ -29,6 +44,8 @@ function request(method, params = {}) {
 
 const initialized = await request('initialize', { protocolVersion: '2025-06-18' });
 assert.equal(initialized.serverInfo.name, 'KillerMCP');
+assert.equal(initialized.serverInfo.version, '0.1.2');
+assert.match(initialized.instructions, /KillerMCP 0\.1\.3 is available/);
 const listed = await request('tools/list');
 assert.deepEqual(listed.tools.map(tool => tool.name), [
   'text_statistics', 'convert_case', 'encode_base64', 'decode_base64', 'text_to_ascii_binary',
@@ -50,6 +67,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'analyze_password_private',
   'evaluate_math',
   'list_film_stocks', 'calculate_reciprocity',
+  'killermcp_update_status',
 ]);
 const called = await request('tools/call', { name: 'text_statistics', arguments: { text: 'hello world' } });
 assert.deepEqual(JSON.parse(called.content[0].text), { characterCount: 11, wordCount: 2, lineCount: 1, byteSize: 11 });
@@ -112,5 +130,12 @@ const stocks = await request('tools/call', { name: 'list_film_stocks', arguments
 assert.equal(JSON.parse(stocks.content[0].text).length, 41);
 const reciprocity = await request('tools/call', { name: 'calculate_reciprocity', arguments: { filmStockId: 'fuji-acros100ii', meteredSeconds: 120 } });
 assert.equal(JSON.parse(reciprocity.content[0].text).noFailure, true);
+const update = await request('tools/call', { name: 'killermcp_update_status', arguments: {} });
+assert.equal(JSON.parse(update.content[0].text).updateAvailable, true);
+assert.equal(updateRequests, 1);
+const invalidUpdate = await request('tools/call', { name: 'killermcp_update_status', arguments: { force: true } });
+assert.equal(invalidUpdate.isError, true);
 child.stdin.end();
+updateServer.close();
+await rm(updateDirectory, { recursive: true, force: true });
 console.log('Native KillerMCP stdio handshake, tool listing, and tool call passed.');

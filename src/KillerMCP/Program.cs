@@ -1,5 +1,7 @@
 using System.Text;
 using System.Text.Json;
+using System.Reflection;
+using KillerMCP;
 using KillerTools.Engine.Text;
 using KillerTools.Engine.Math;
 using KillerTools.Engine.Numbers;
@@ -13,6 +15,9 @@ using KillerTools.Engine.Security;
 Console.InputEncoding = Encoding.UTF8;
 Console.OutputEncoding = Encoding.UTF8;
 var json = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+var assemblyVersion = Assembly.GetExecutingAssembly().GetName().Version!;
+var currentVersion = $"{assemblyVersion.Major}.{assemblyVersion.Minor}.{assemblyVersion.Build}";
+ToolRegistry.Status = await UpdateChecker.CheckForUpdateAsync(currentVersion);
 string? line;
 while ((line = Console.ReadLine()) is not null)
 {
@@ -30,8 +35,8 @@ while ((line = Console.ReadLine()) is not null)
         {
             protocolVersion = "2025-06-18",
             capabilities = new { tools = new { listChanged = false } },
-            serverInfo = new { name = "KillerMCP", version = "0.1.2" },
-            instructions = "Use KillerMCP tools by task. Exact tool names are optional when the request is clear.",
+            serverInfo = new { name = "KillerMCP", version = currentVersion },
+            instructions = "Use KillerMCP tools by task. Exact tool names are optional when the request is clear." + UpdateChecker.Instruction(ToolRegistry.Status),
         },
         "tools/list" => new { tools = ToolRegistry.Tools },
         "tools/call" => ToolRegistry.Call(request.GetProperty("params"), json),
@@ -43,6 +48,7 @@ while ((line = Console.ReadLine()) is not null)
 static class ToolRegistry
 {
     private static readonly JsonSerializerOptions CamelCaseJson = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    public static UpdateStatus Status { get; set; } = null!;
 
     public static readonly object[] Tools =
     [
@@ -95,6 +101,7 @@ static class ToolRegistry
         Tool("evaluate_math", "Evaluate a bounded arithmetic expression.", new { expression = new { type = "string", minLength = 1, maxLength = 256 } }, ["expression"]),
         Tool("list_film_stocks", "List the film stocks available in KillerTools Reciprocity Calculator.", new { }, []),
         Tool("calculate_reciprocity", "Calculate reciprocity failure adjustment for a film stock.", new { filmStockId = new { type = "string", minLength = 1, maxLength = 64 }, meteredSeconds = new { type = "number", minimum = 0.0001, maximum = 3600 } }, ["filmStockId", "meteredSeconds"]),
+        Tool("killermcp_update_status", "Check the installed KillerMCP version and whether a newer signed Windows installer is available.", new { }, []),
     ];
 
     public static object Call(JsonElement parameters, JsonSerializerOptions json)
@@ -154,6 +161,7 @@ static class ToolRegistry
             "evaluate_math" => EvaluateMath(arguments),
             "list_film_stocks" => FilmReciprocity.List(),
             "calculate_reciprocity" => Reciprocity(arguments),
+            "killermcp_update_status" => UpdateStatus(arguments),
             _ => throw new InvalidOperationException($"Unknown tool: {name}"),
             };
             return new { content = new[] { new { type = "text", text = JsonSerializer.Serialize(value, json) } } };
@@ -185,6 +193,15 @@ static class ToolRegistry
     private static string[] StringArray(JsonElement arguments, string name) => arguments.TryGetProperty(name, out var values) ? values.EnumerateArray().Select(value => value.GetString()!).ToArray() : [];
     private static string Query(JsonElement arguments) => arguments.GetProperty("query").GetString()!;
     private static int Limit(JsonElement arguments) => arguments.TryGetProperty("limit", out var value) ? value.GetInt32() : 10;
+    private static object UpdateStatus(JsonElement arguments)
+    {
+        if (arguments.EnumerateObject().Any())
+        {
+            throw new ToolCallException("This tool takes no arguments");
+        }
+
+        return Status;
+    }
     private static string Locale(JsonElement arguments) => OptionalString(arguments, "locale", "en");
     private static object Localize<T>(string tool, IReadOnlyList<T> entries, string locale)
     {

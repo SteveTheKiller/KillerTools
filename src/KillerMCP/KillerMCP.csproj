@@ -3,6 +3,7 @@
     <OutputType>Exe</OutputType>
     <AssemblyName>KillerMCP</AssemblyName>
     <RootNamespace>KillerMCP</RootNamespace>
+    <Version>0.1.2</Version>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\KillerTools.Engine\KillerTools.Engine.csproj" />
