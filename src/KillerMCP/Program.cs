@@ -5,6 +5,8 @@ using KillerTools.Engine.Math;
 using KillerTools.Engine.Numbers;
 using KillerTools.Engine.Reference;
 using KillerTools.Engine.SystemTools;
+using KillerTools.Engine.Documents;
+using KillerTools.Engine.Photography;
 
 Console.InputEncoding = Encoding.UTF8;
 Console.OutputEncoding = Encoding.UTF8;
@@ -62,6 +64,12 @@ static class ToolRegistry
         LookupTool("lookup_port_protocol", "Search the port and protocol reference."),
         LookupTool("lookup_windows_error", "Search the Windows error code reference."),
         LookupTool("lookup_windows_event", "Search the Windows Event ID reference."),
+        Tool("diff_text", "Compare two texts line by line.", new { left = StringSchema(), right = StringSchema() }, ["left", "right"]),
+        Tool("calculate_nd_exposure", "Calculate exposure time with a neutral density filter.", new { baseSeconds = NumberSchema(), stops = NumberSchema() }, ["baseSeconds", "stops"]),
+        Tool("calculate_exposure_equivalence", "Calculate equivalent shutter speed after an aperture change.", new { shutterSeconds = NumberSchema(), originalAperture = NumberSchema(), targetAperture = NumberSchema() }, ["shutterSeconds", "originalAperture", "targetAperture"]),
+        Tool("calculate_depth_of_field", "Calculate depth of field.", new { focalLengthMm = NumberSchema(), aperture = NumberSchema(), focusDistance = NumberSchema(), focusUnit = EnumSchema("m", "ft"), circleOfConfusionMm = NumberSchema() }, ["focalLengthMm", "aperture", "focusDistance", "focusUnit", "circleOfConfusionMm"]),
+        Tool("generate_svg_placeholder", "Generate an SVG placeholder image.", new { width = IntegerSchema(1, 4096), height = IntegerSchema(1, 4096), fontSize = new { type = "integer", minimum = 1, maximum = 512, @default = 26 }, bgColor = new { type = "string", pattern = "^#[0-9a-f]{6}$", @default = "#cccccc" }, fgColor = new { type = "string", pattern = "^#[0-9a-f]{6}$", @default = "#333333" }, useExactSize = BooleanSchema(true), customText = new { type = "string", maxLength = 256, @default = "" } }, ["width", "height"]),
+        Tool("calculate_chmod", "Calculate octal and symbolic Unix permissions.", new { permissions = PermissionSetSchema() }, ["permissions"]),
     ];
 
     public static object Call(JsonElement parameters, JsonSerializerOptions json)
@@ -92,6 +100,12 @@ static class ToolRegistry
             "lookup_port_protocol" => PortProtocolLookup.Search(Query(arguments), Limit(arguments)),
             "lookup_windows_error" => MicrosoftReferenceLookups.SearchErrors(Query(arguments), Limit(arguments)),
             "lookup_windows_event" => MicrosoftReferenceLookups.SearchEvents(Query(arguments), Limit(arguments)),
+            "diff_text" => TextDiff.Compare(arguments.GetProperty("left").GetString()!, arguments.GetProperty("right").GetString()!),
+            "calculate_nd_exposure" => new { seconds = ExposureCalculators.WithNeutralDensity(arguments.GetProperty("baseSeconds").GetDouble(), arguments.GetProperty("stops").GetDouble()) },
+            "calculate_exposure_equivalence" => new { shutterSeconds = ExposureCalculators.EquivalentShutter(arguments.GetProperty("shutterSeconds").GetDouble(), arguments.GetProperty("originalAperture").GetDouble(), arguments.GetProperty("targetAperture").GetDouble()) },
+            "calculate_depth_of_field" => ExposureCalculators.DepthOfField(arguments.GetProperty("focalLengthMm").GetDouble(), arguments.GetProperty("aperture").GetDouble(), arguments.GetProperty("focusDistance").GetDouble(), arguments.GetProperty("focusUnit").GetString()!, arguments.GetProperty("circleOfConfusionMm").GetDouble()),
+            "generate_svg_placeholder" => Svg(arguments),
+            "calculate_chmod" => Chmod(arguments),
             _ => throw new InvalidOperationException($"Unknown tool: {name}"),
         };
         return new { content = new[] { new { type = "text", text = JsonSerializer.Serialize(value, json) } } };
@@ -106,6 +120,11 @@ static class ToolRegistry
     private static object IntegerSchema(int minimum, int maximum) => new { type = "integer", minimum, maximum };
     private static object NumberSchema() => new { type = "number" };
     private static object EnumSchema(params string[] values) => new { type = "string", @enum = values };
+    private static object PermissionSetSchema()
+    {
+        var group = new { type = "object", properties = new { read = new { type = "boolean" }, write = new { type = "boolean" }, execute = new { type = "boolean" } }, required = new[] { "read", "write", "execute" }, additionalProperties = false };
+        return new { type = "object", properties = new { owner = group, group, @public = group }, required = new[] { "owner", "group", "public" }, additionalProperties = false };
+    }
     private static bool OptionalBoolean(JsonElement arguments, string name) => arguments.TryGetProperty(name, out var value) && value.GetBoolean();
     private static string Query(JsonElement arguments) => arguments.GetProperty("query").GetString()!;
     private static int Limit(JsonElement arguments) => arguments.TryGetProperty("limit", out var value) ? value.GetInt32() : 10;
@@ -121,5 +140,25 @@ static class ToolRegistry
             _ => throw new InvalidOperationException("Unknown percentage mode."),
         };
         return new { value };
+    }
+    private static object Svg(JsonElement arguments)
+    {
+        var svg = SvgPlaceholder.Build(arguments.GetProperty("width").GetInt32(), arguments.GetProperty("height").GetInt32(),
+            arguments.TryGetProperty("fontSize", out var fontSize) ? fontSize.GetInt32() : 26,
+            arguments.TryGetProperty("bgColor", out var background) ? background.GetString()! : "#cccccc",
+            arguments.TryGetProperty("fgColor", out var foreground) ? foreground.GetString()! : "#333333",
+            !arguments.TryGetProperty("useExactSize", out var exact) || exact.GetBoolean(),
+            arguments.TryGetProperty("customText", out var text) ? text.GetString()! : "");
+        return new { svg, dataUrl = $"data:image/svg+xml;base64,{Base64Text.Encode(svg)}" };
+    }
+    private static object Chmod(JsonElement arguments)
+    {
+        var permissions = arguments.GetProperty("permissions");
+        PermissionGroup Group(string name)
+        {
+            var group = permissions.GetProperty(name);
+            return new(group.GetProperty("read").GetBoolean(), group.GetProperty("write").GetBoolean(), group.GetProperty("execute").GetBoolean());
+        }
+        return UnixPermissions.Calculate(new(Group("owner"), Group("group"), Group("public")));
     }
 }

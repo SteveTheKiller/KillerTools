@@ -34,6 +34,8 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'unescape_html_entities',
   'convert_date_time', 'lookup_exchange_ndr', 'lookup_group_policy', 'lookup_http_status',
   'lookup_m365_sku', 'lookup_port_protocol', 'lookup_windows_error', 'lookup_windows_event',
+  'diff_text', 'calculate_nd_exposure', 'calculate_exposure_equivalence',
+  'calculate_depth_of_field', 'generate_svg_placeholder', 'calculate_chmod',
 ]);
 const called = await request('tools/call', { name: 'text_statistics', arguments: { text: 'hello world' } });
 assert.deepEqual(JSON.parse(called.content[0].text), { characterCount: 11, wordCount: 2, lineCount: 1, byteSize: 11 });
@@ -45,5 +47,9 @@ const statuses = await request('tools/call', { name: 'lookup_http_status', argum
 assert.equal(JSON.parse(statuses.content[0].text)[0].code, 404);
 const policies = await request('tools/call', { name: 'lookup_group_policy', arguments: { query: 'minimum password length', limit: 1 } });
 assert.equal(JSON.parse(policies.content[0].text)[0].name, 'Minimum Password Length');
+const exposure = await request('tools/call', { name: 'calculate_nd_exposure', arguments: { baseSeconds: 0.5, stops: 6 } });
+assert.deepEqual(JSON.parse(exposure.content[0].text), { seconds: 32 });
+const difference = await request('tools/call', { name: 'diff_text', arguments: { left: 'one\ntwo', right: 'one\nnew' } });
+assert.equal(JSON.parse(difference.content[0].text).added, 1);
 child.stdin.end();
 console.log('Native KillerMCP stdio handshake, tool listing, and tool call passed.');
