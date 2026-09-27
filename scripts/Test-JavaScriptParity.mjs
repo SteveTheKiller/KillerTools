@@ -67,6 +67,11 @@ const requests = [
   { operation: 'calculate_ipv4_subnet', arguments: { address: '198.51.100.27/24' } },
   { operation: 'calculate_ipv4_subnet', arguments: { address: '203.0.113.4/31' } },
   { operation: 'generate_ipv6_ula', arguments: { macAddress: '00:11:22:33:44:55', timestampMs: 1700000000000 } },
+  { operation: 'format_json', arguments: { text: '{b:2,a:1,}', indentSize: 3, sortKeys: true } },
+  { operation: 'format_json', arguments: { text: "{/* note */ title:'KillerTools',items:[3,2,1,],}", indentSize: 2, sortKeys: false } },
+  { operation: 'minify_json', arguments: { text: "{ text: 'hello', hex: 0x10, trailing: true, }" } },
+  { operation: 'diff_json', arguments: { left: '{ a: 1, same: true }', right: '{ a: 2, same: true }', onlyDifferences: true } },
+  { operation: 'diff_json', arguments: { left: '[1, 2]', right: '[1, 3, 4]', onlyDifferences: false } },
   { operation: 'json_to_csv', arguments: { rows: [{ a: 1, b: 'hello, world' }, { a: 2, c: null }] } },
   { operation: 'json_to_csv', arguments: { rows: [{ text: 'line 1\nline 2', active: true, nested: { a: 1 } }] } },
   { operation: 'parse_url', arguments: { url: 'https://user:pass@example.com:8443/a%20b?x=1&x=two+words#top' } },
@@ -108,7 +113,7 @@ const requests = [
   { operation: 'calculate_reciprocity', arguments: { filmStockId: 'fuji-acros100ii', meteredSeconds: 120 } },
 ];
 
-const oracleOperations = new Set(['convert_date_time', 'calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv', 'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers', 'test_regex', 'lookup_http_status', 'lookup_port_protocol', 'lookup_exchange_ndr', 'lookup_m365_sku', 'lookup_windows_error', 'lookup_windows_event', 'lookup_group_policy', 'encode_file_base64_local', 'otp_private', 'generate_uuids', 'parse_jwt_private', 'analyze_password_private', 'evaluate_math', 'list_film_stocks', 'calculate_reciprocity']);
+const oracleOperations = new Set(['convert_date_time', 'calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'format_json', 'minify_json', 'diff_json', 'json_to_csv', 'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers', 'test_regex', 'lookup_http_status', 'lookup_port_protocol', 'lookup_exchange_ndr', 'lookup_m365_sku', 'lookup_windows_error', 'lookup_windows_event', 'lookup_group_policy', 'encode_file_base64_local', 'otp_private', 'generate_uuids', 'parse_jwt_private', 'analyze_password_private', 'evaluate_math', 'list_film_stocks', 'calculate_reciprocity']);
 const oracle = spawn(process.execPath, [resolve(site, 'mcp/dist/killermcp.mjs')], { cwd: resolve(site, 'mcp'), stdio: ['pipe', 'pipe', 'pipe'] });
 let oracleBuffer = '';
 let oracleError = '';
@@ -203,4 +208,4 @@ if (run.status !== 0) {
 
 assert.deepEqual(JSON.parse(run.stdout), expected);
 await rm(parityDirectory, { recursive: true, force: true });
-console.log(`${requests.length} live JavaScript parity cases passed for 49 native operations.`);
+console.log(`${requests.length} live JavaScript parity cases passed for ${new Set(requests.map(request => request.operation)).size} native operations.`);

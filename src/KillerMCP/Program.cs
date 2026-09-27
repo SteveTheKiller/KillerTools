@@ -97,6 +97,9 @@ static class ToolRegistry
         LookupTool("lookup_windows_error", "Search the Windows error code reference."),
         LookupTool("lookup_windows_event", "Search the Windows Event ID reference."),
         Tool("diff_text", "Compare two texts line by line.", new { left = StringSchema(), right = StringSchema() }, ["left", "right"]),
+        Tool("format_json", "Prettify JSON5-compatible text with optional key sorting.", new { text = StructuredTextSchema(), indentSize = new { type = "integer", minimum = 0, maximum = 10, @default = 3 }, sortKeys = BooleanSchema(true) }, ["text"]),
+        Tool("minify_json", "Minify JSON5-compatible text.", new { text = StructuredTextSchema() }, ["text"]),
+        Tool("diff_json", "Compare two JSON5-compatible documents.", new { left = StructuredTextSchema(), right = StructuredTextSchema(), onlyDifferences = BooleanSchema(true) }, ["left", "right"]),
         Tool("calculate_nd_exposure", "Calculate exposure time with a neutral density filter.", new { baseSeconds = NumberSchema(), stops = NumberSchema() }, ["baseSeconds", "stops"]),
         Tool("calculate_exposure_equivalence", "Calculate equivalent shutter speed after an aperture change.", new { shutterSeconds = NumberSchema(), originalAperture = NumberSchema(), targetAperture = NumberSchema() }, ["shutterSeconds", "originalAperture", "targetAperture"]),
         Tool("calculate_depth_of_field", "Calculate depth of field.", new { focalLengthMm = NumberSchema(), aperture = NumberSchema(), focusDistance = NumberSchema(), focusUnit = EnumSchema("m", "ft"), circleOfConfusionMm = NumberSchema() }, ["focalLengthMm", "aperture", "focusDistance", "focusUnit", "circleOfConfusionMm"]),
@@ -174,6 +177,9 @@ static class ToolRegistry
             "lookup_windows_error" => Localize("windows-error-codes", MicrosoftReferenceLookups.SearchErrors(Query(arguments), Limit(arguments)), Locale(arguments)),
             "lookup_windows_event" => Localize("windows-event-lookup", MicrosoftReferenceLookups.SearchEvents(Query(arguments), Limit(arguments)), Locale(arguments)),
             "diff_text" => TextDiff.Compare(arguments.GetProperty("left").GetString()!, arguments.GetProperty("right").GetString()!),
+            "format_json" => JsonFormat(arguments),
+            "minify_json" => JsonMinify(arguments),
+            "diff_json" => JsonDifference(arguments),
             "calculate_nd_exposure" => new { seconds = ExposureCalculators.WithNeutralDensity(arguments.GetProperty("baseSeconds").GetDouble(), arguments.GetProperty("stops").GetDouble()) },
             "calculate_exposure_equivalence" => new { shutterSeconds = ExposureCalculators.EquivalentShutter(arguments.GetProperty("shutterSeconds").GetDouble(), arguments.GetProperty("originalAperture").GetDouble(), arguments.GetProperty("targetAperture").GetDouble()) },
             "calculate_depth_of_field" => ExposureCalculators.DepthOfField(arguments.GetProperty("focalLengthMm").GetDouble(), arguments.GetProperty("aperture").GetDouble(), arguments.GetProperty("focusDistance").GetDouble(), arguments.GetProperty("focusUnit").GetString()!, arguments.GetProperty("circleOfConfusionMm").GetDouble()),
@@ -216,6 +222,7 @@ static class ToolRegistry
     private static object LookupTool(string name, string description) =>
         Tool(name, description, new { query = StringSchema(), limit = new { type = "integer", minimum = 1, maximum = 20, @default = 10 }, locale = EnumSchema("en", "bn", "cs", "de", "es", "fr", "hu", "it", "ja", "kk", "no", "pl", "pt", "ru", "tr", "uk", "vi", "zh", "zh-TW") }, ["query"]);
     private static object StringSchema() => new { type = "string", maxLength = 4096 };
+    private static object StructuredTextSchema() => new { type = "string", minLength = 1, maxLength = 4096 };
     private static object BooleanSchema(bool defaultValue) => new { type = "boolean", @default = defaultValue };
     private static object IntegerSchema(int minimum, int maximum) => new { type = "integer", minimum, maximum };
     private static object NumberSchema() => new { type = "number" };
@@ -276,6 +283,48 @@ static class ToolRegistry
             _ => throw new InvalidOperationException("Unknown percentage mode."),
         };
         return new { value };
+    }
+    private static object JsonFormat(JsonElement arguments)
+    {
+        try
+        {
+            var text = StructuredJson.Format(arguments.GetProperty("text").GetString()!, OptionalInteger(arguments, "indentSize", 3), OptionalBoolean(arguments, "sortKeys", true));
+            if (text.Length > 16_384) throw new ToolCallException("Output is too large");
+            return new { text };
+        }
+        catch (ToolCallException) { throw; }
+        catch (Exception exception) when (exception is FormatException or ArgumentException)
+        {
+            throw new ToolCallException("Invalid structured text");
+        }
+    }
+    private static object JsonMinify(JsonElement arguments)
+    {
+        try
+        {
+            var text = StructuredJson.Minify(arguments.GetProperty("text").GetString()!);
+            if (text.Length > 16_384) throw new ToolCallException("Output is too large");
+            return new { text };
+        }
+        catch (ToolCallException) { throw; }
+        catch (Exception exception) when (exception is FormatException or ArgumentException)
+        {
+            throw new ToolCallException("Invalid structured text");
+        }
+    }
+    private static object JsonDifference(JsonElement arguments)
+    {
+        try
+        {
+            var value = StructuredJson.Diff(arguments.GetProperty("left").GetString()!, arguments.GetProperty("right").GetString()!, OptionalBoolean(arguments, "onlyDifferences", true));
+            if (JsonSerializer.Serialize(value, CamelCaseJson).Length > 16_384) throw new ToolCallException("Output is too large");
+            return value;
+        }
+        catch (ToolCallException) { throw; }
+        catch (Exception exception) when (exception is FormatException or ArgumentException)
+        {
+            throw new ToolCallException("Invalid document input");
+        }
     }
     private static object Svg(JsonElement arguments)
     {

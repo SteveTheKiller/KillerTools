@@ -70,7 +70,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'unescape_html_entities',
   'convert_date_time', 'lookup_exchange_ndr', 'lookup_group_policy', 'lookup_http_status',
   'lookup_m365_sku', 'lookup_port_protocol', 'lookup_windows_error', 'lookup_windows_event',
-  'diff_text', 'calculate_nd_exposure', 'calculate_exposure_equivalence',
+  'diff_text', 'format_json', 'minify_json', 'diff_json', 'calculate_nd_exposure', 'calculate_exposure_equivalence',
   'calculate_depth_of_field', 'generate_svg_placeholder', 'calculate_chmod',
   'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv',
   'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers',
@@ -114,6 +114,10 @@ const exposure = await request('tools/call', { name: 'calculate_nd_exposure', ar
 assert.deepEqual(JSON.parse(exposure.content[0].text), { seconds: 32 });
 const difference = await request('tools/call', { name: 'diff_text', arguments: { left: 'one\ntwo', right: 'one\nnew' } });
 assert.equal(JSON.parse(difference.content[0].text).added, 1);
+const formattedJson = await request('tools/call', { name: 'format_json', arguments: { text: '{b:2,a:1,}' } });
+assert.equal(JSON.parse(formattedJson.content[0].text).text, '{\n   "a": 1,\n   "b": 2\n}');
+const invalidJson = await request('tools/call', { name: 'minify_json', arguments: { text: '{broken:' } });
+assert.equal(invalidJson.isError, true);
 const subnet = await request('tools/call', { name: 'calculate_ipv4_subnet', arguments: { address: '198.51.100.27/24' } });
 assert.equal(JSON.parse(subnet.content[0].text).cidr, '198.51.100.0/24');
 const spf = await request('tools/call', { name: 'generate_spf_record', arguments: { providers: ['include:_spf.google.com'], ipAddresses: ['198.51.100.7'], enforcement: '-all' } });

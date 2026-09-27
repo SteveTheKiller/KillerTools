@@ -19,6 +19,7 @@ var checks = new (string Name, Action Run)[]
     ("HTML entities and text diff", CheckHtmlAndDiff),
     ("IP network calculations", CheckNetworkCalculations),
     ("URL and CSV conversions", CheckUrlAndCsv),
+    ("JSON5 formatting and diff", CheckStructuredJson),
     ("email records", CheckEmailRecords),
     ("email headers", CheckEmailHeaders),
     ("safe regular expressions", CheckSafeRegex),
@@ -136,6 +137,17 @@ static void CheckUrlAndCsv()
     Equal("example.com", url.Hostname);
     Equal("8443", url.Port);
     Equal("two words", url.SearchParams[1][1]);
+}
+
+static void CheckStructuredJson()
+{
+    Equal("{\n   \"a\": 1,\n   \"b\": 2\n}", StructuredJson.Format("{b:2,a:1,}"));
+    Equal("{\"text\":\"it's valid\",\"hex\":16}", StructuredJson.Minify("{/*comment*/text:'it\\'s valid',hex:0x10}"));
+    var difference = System.Text.Json.JsonSerializer.SerializeToElement(StructuredJson.Diff("{ a: 1, same: true }", "{ a: 2, same: true }"));
+    Equal("children-updated", difference.GetProperty("status").GetString());
+    Equal(1, difference.GetProperty("children").GetArrayLength());
+    Equal("updated", difference.GetProperty("children")[0].GetProperty("status").GetString());
+    Throws<FormatException>(() => StructuredJson.Parse("{ broken:"));
 }
 
 static void CheckNetworkCalculations()
