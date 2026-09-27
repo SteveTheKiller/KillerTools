@@ -110,6 +110,7 @@ static class ToolRegistry
         Tool("convert_toml", "Convert TOML text to JSON or YAML using KillerTools.", new { text = StructuredTextSchema(), to = EnumSchema("json", "yaml") }, ["text", "to"]),
         Tool("format_yaml", "Prettify YAML with optional key sorting using KillerTools YAML Viewer.", new { text = StructuredTextSchema(), indentSize = new { type = "integer", minimum = 1, maximum = 10, @default = 2 }, sortKeys = BooleanSchema(false) }, ["text"]),
         Tool("generate_meta_tags", "Generate Open Graph and Twitter meta tags using KillerTools.", new { type = EnumSchema("website", "article", "book", "profile", "music.song", "music.album", "music.playlist", "music.radio_station", "video.movie", "video.episode", "video.tv_show", "video.other"), fields = new { type = "object", maxProperties = 30, additionalProperties = new { type = "string", maxLength = 1024 } } }, []),
+        Tool("describe_cron", "Validate and describe a cron expression using KillerTools.", new { expression = new { type = "string", minLength = 1, maxLength = 128 }, use24HourTimeFormat = BooleanSchema(true), dayOfWeekStartIndexZero = BooleanSchema(true) }, ["expression"]),
         Tool("calculate_nd_exposure", "Calculate exposure time with a neutral density filter.", new { baseSeconds = NumberSchema(), stops = NumberSchema() }, ["baseSeconds", "stops"]),
         Tool("calculate_exposure_equivalence", "Calculate equivalent shutter speed after an aperture change.", new { shutterSeconds = NumberSchema(), originalAperture = NumberSchema(), targetAperture = NumberSchema() }, ["shutterSeconds", "originalAperture", "targetAperture"]),
         Tool("calculate_depth_of_field", "Calculate depth of field.", new { focalLengthMm = NumberSchema(), aperture = NumberSchema(), focusDistance = NumberSchema(), focusUnit = EnumSchema("m", "ft"), circleOfConfusionMm = NumberSchema() }, ["focalLengthMm", "aperture", "focusDistance", "focusUnit", "circleOfConfusionMm"]),
@@ -202,6 +203,7 @@ static class ToolRegistry
             "convert_toml" => StructuredConvert(arguments, "toml"),
             "format_yaml" => YamlFormat(arguments),
             "generate_meta_tags" => MetaTagResult(arguments),
+            "describe_cron" => CronResult(arguments),
             "calculate_nd_exposure" => new { seconds = ExposureCalculators.WithNeutralDensity(arguments.GetProperty("baseSeconds").GetDouble(), arguments.GetProperty("stops").GetDouble()) },
             "calculate_exposure_equivalence" => new { shutterSeconds = ExposureCalculators.EquivalentShutter(arguments.GetProperty("shutterSeconds").GetDouble(), arguments.GetProperty("originalAperture").GetDouble(), arguments.GetProperty("targetAperture").GetDouble()) },
             "calculate_depth_of_field" => ExposureCalculators.DepthOfField(arguments.GetProperty("focalLengthMm").GetDouble(), arguments.GetProperty("aperture").GetDouble(), arguments.GetProperty("focusDistance").GetDouble(), arguments.GetProperty("focusUnit").GetString()!, arguments.GetProperty("circleOfConfusionMm").GetDouble()),
@@ -423,6 +425,20 @@ static class ToolRegistry
         catch (ArgumentException exception) when (exception.Message.StartsWith("Too many metadata fields", StringComparison.Ordinal)) { throw new ToolCallException("Too many metadata fields"); }
         catch (ArgumentException exception) when (exception.Message.StartsWith("Unknown metadata field", StringComparison.Ordinal)) { throw new ToolCallException("Unknown metadata field for selected page type"); }
         catch (Exception) { throw new ToolCallException("Unable to generate meta tags"); }
+    }
+    private static object CronResult(JsonElement arguments)
+    {
+        try
+        {
+            return new
+            {
+                description = CronDescriptions.Describe(
+                    arguments.GetProperty("expression").GetString()!,
+                    OptionalBoolean(arguments, "use24HourTimeFormat", true),
+                    OptionalBoolean(arguments, "dayOfWeekStartIndexZero", true))
+            };
+        }
+        catch (Exception) { throw new ToolCallException("Invalid cron expression"); }
     }
     private static object KillerScripts(JsonElement arguments)
     {

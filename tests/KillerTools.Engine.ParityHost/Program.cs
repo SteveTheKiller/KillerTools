@@ -57,6 +57,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "convert_toml" => StructuredConversion(arguments, "toml"),
         "format_yaml" => new { text = StructuredTextConverter.FormatYaml(arguments.GetProperty("text").GetString()!, arguments.GetProperty("indentSize").GetInt32(), arguments.GetProperty("sortKeys").GetBoolean()) },
         "generate_meta_tags" => MetaTagResult(arguments),
+        "describe_cron" => new { description = CronDescriptions.Describe(arguments.GetProperty("expression").GetString()!, arguments.GetProperty("use24HourTimeFormat").GetBoolean(), arguments.GetProperty("dayOfWeekStartIndexZero").GetBoolean()) },
         "json_to_csv" => new { csv = JsonCsv.Convert(arguments.GetProperty("rows")) },
         "parse_url" => UrlResult(arguments),
         "generate_spf_record" => SpfResult(arguments),

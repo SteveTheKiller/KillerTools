@@ -18,6 +18,7 @@
   "convert_date_time": "verified",
   "decode_base64": "verified",
   "decode_file_base64_local": "verified",
+  "describe_cron": "verified",
   "diff_json": "verified",
   "diff_text": "verified",
   "encode_base64": "verified",

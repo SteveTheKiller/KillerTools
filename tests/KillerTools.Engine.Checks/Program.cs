@@ -25,6 +25,7 @@ var checks = new (string Name, Action Run)[]
     ("XML and JSON conversion", CheckXmlJson),
     ("YAML and TOML conversion", CheckYamlToml),
     ("meta tag generation", CheckMetaTags),
+    ("cron descriptions", CheckCronDescriptions),
     ("email records", CheckEmailRecords),
     ("email headers", CheckEmailHeaders),
     ("safe regular expressions", CheckSafeRegex),
@@ -206,6 +207,12 @@ static void CheckMetaTags()
     Equal(true, html.Contains("<meta property=\"og:title\" value=\"KillerTools\" />", StringComparison.Ordinal));
     Equal(true, html.Contains("<meta name=\"twitter:title\" value=\"KillerTools\" />", StringComparison.Ordinal));
     Throws<ArgumentException>(() => MetaTags.Generate("website", [new("unknown", "value")]));
+}
+
+static void CheckCronDescriptions()
+{
+    Equal("Every 5 minutes, every hour, every day", CronDescriptions.Describe("*/5 * * * *"));
+    Throws<FormatException>(() => CronDescriptions.Describe("not a cron expression"));
 }
 
 static void CheckNetworkCalculations()
