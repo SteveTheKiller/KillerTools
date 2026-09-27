@@ -27,6 +27,7 @@ var checks = new (string Name, Action Run)[]
     ("group policy lookup", CheckGroupPolicyLookup),
     ("reference translations", CheckReferenceTranslations),
     ("portable utilities", CheckPortableUtilities),
+    ("bounded Base64 files", CheckBase64Files),
 };
 
 foreach (var check in checks)
@@ -153,6 +154,31 @@ static void CheckPortableUtilities()
     Equal(true, ExposureCalculators.DepthOfField(50, 8, 3, "m", 0.03).NearMeters > 0);
 }
 
+static void CheckBase64Files()
+{
+    var directory = Path.Combine(Path.GetTempPath(), $"killertools-{Guid.NewGuid():N}");
+    Directory.CreateDirectory(directory);
+    try
+    {
+        var source = Path.Combine(directory, "source.bin");
+        File.WriteAllBytes(source, [0, 1, 2, 254, 255]);
+        var encoded = Base64Files.Encode(source);
+        Equal("AAEC/v8=", encoded.Base64);
+        Equal(5, encoded.ByteLength);
+
+        var destination = Path.Combine(directory, "decoded.bin");
+        var decoded = Base64Files.Decode(destination, encoded.Base64);
+        Equal(5, decoded.ByteLength);
+        Equal(true, File.ReadAllBytes(destination).SequenceEqual(new byte[] { 0, 1, 2, 254, 255 }));
+        Throws<IOException>(() => Base64Files.Decode(destination, encoded.Base64));
+        Throws<FormatException>(() => Base64Files.Decode(Path.Combine(directory, "invalid.bin"), "not base64"));
+    }
+    finally
+    {
+        Directory.Delete(directory, true);
+    }
+}
+
 static void CheckHtmlAndDiff()
 {
     Equal("&lt;a title=&quot;x&quot;&gt;Tom &amp; Jerry&#39;s&lt;/a&gt;", HtmlEntities.Escape("<a title=\"x\">Tom & Jerry's</a>"));
@@ -210,4 +236,17 @@ static void Equal<T>(T expected, T actual)
     {
         throw new InvalidOperationException($"Expected {expected}, received {actual}.");
     }
+}
+
+static void Throws<T>(Action action) where T : Exception
+{
+    try
+    {
+        action();
+    }
+    catch (T)
+    {
+        return;
+    }
+    throw new InvalidOperationException($"Expected {typeof(T).Name}.");
 }

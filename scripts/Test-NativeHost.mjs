@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const child = spawn('dotnet', ['run', '--project', 'src/KillerMCP/KillerMCP.csproj', '--no-build'], { stdio: ['pipe', 'pipe', 'inherit'] });
 let buffer = '';
@@ -39,6 +42,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv',
   'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers',
   'test_regex',
+  'encode_file_base64_local', 'decode_file_base64_local',
 ]);
 const called = await request('tools/call', { name: 'text_statistics', arguments: { text: 'hello world' } });
 assert.deepEqual(JSON.parse(called.content[0].text), { characterCount: 11, wordCount: 2, lineCount: 1, byteSize: 11 });
@@ -60,5 +64,20 @@ const spf = await request('tools/call', { name: 'generate_spf_record', arguments
 assert.deepEqual(JSON.parse(spf.content[0].text), { record: 'v=spf1 include:_spf.google.com ip4:198.51.100.7 -all' });
 const regex = await request('tools/call', { name: 'test_regex', arguments: { pattern: 'a+', text: 'caaab' } });
 assert.equal(JSON.parse(regex.content[0].text).matches.length, 1);
+const directory = await mkdtemp(join(tmpdir(), 'killermcp-'));
+try {
+  const source = join(directory, 'source.bin');
+  const destination = join(directory, 'decoded.bin');
+  await writeFile(source, Buffer.from([0, 1, 2, 254, 255]));
+  const fileEncoded = await request('tools/call', { name: 'encode_file_base64_local', arguments: { path: source } });
+  assert.deepEqual(JSON.parse(fileEncoded.content[0].text), { base64: 'AAEC/v8=', byteLength: 5 });
+  const fileDecoded = await request('tools/call', { name: 'decode_file_base64_local', arguments: { path: destination, base64: 'AAEC/v8=' } });
+  assert.equal(JSON.parse(fileDecoded.content[0].text).byteLength, 5);
+  assert.deepEqual(await readFile(destination), Buffer.from([0, 1, 2, 254, 255]));
+  const overwrite = await request('tools/call', { name: 'decode_file_base64_local', arguments: { path: destination, base64: 'AAEC/v8=' } });
+  assert.equal(overwrite.isError, true);
+} finally {
+  await rm(directory, { recursive: true, force: true });
+}
 child.stdin.end();
 console.log('Native KillerMCP stdio handshake, tool listing, and tool call passed.');

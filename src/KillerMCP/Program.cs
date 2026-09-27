@@ -80,14 +80,18 @@ static class ToolRegistry
         Tool("generate_dmarc_record", "Build a DMARC TXT record.", new { policy = EnumSchema("reject", "quarantine", "none"), subdomainPolicy = EnumSchema("reject", "quarantine", "none", ""), percentage = new { type = "integer", minimum = 0, maximum = 100, @default = 100 }, ruaEmails = StringArraySchema(5), rufEmails = StringArraySchema(5), adkim = EnumSchema("", "s"), aspf = EnumSchema("", "s") }, []),
         Tool("parse_email_headers", "Parse message headers, delivery hops, authentication results, and spam signals.", new { headers = new { type = "string", minLength = 1, maxLength = 16_384 } }, ["headers"]),
         Tool("test_regex", "Match text using safe RE2 syntax.", new { pattern = new { type = "string", minLength = 1, maxLength = 256 }, text = new { type = "string", maxLength = 4096 }, global = BooleanSchema(true), ignoreCase = BooleanSchema(false), multiline = BooleanSchema(false), dotAll = BooleanSchema(true) }, ["pattern", "text"]),
+        Tool("encode_file_base64_local", "Read a local file and return a bounded Base64 representation.", new { path = new { type = "string", minLength = 1, maxLength = 1024 } }, ["path"]),
+        Tool("decode_file_base64_local", "Decode Base64 to a new local file. Existing files are never overwritten.", new { path = new { type = "string", minLength = 1, maxLength = 1024 }, base64 = new { type = "string", minLength = 1, maxLength = 43_692 } }, ["path", "base64"]),
     ];
 
     public static object Call(JsonElement parameters, JsonSerializerOptions json)
     {
         var name = parameters.GetProperty("name").GetString();
         var arguments = parameters.GetProperty("arguments");
-        object value = name switch
+        try
         {
+            object value = name switch
+            {
             "text_statistics" => TextStatistics.Calculate(arguments.GetProperty("text").GetString()!),
             "convert_case" => CaseConverter.Convert(arguments.GetProperty("text").GetString()!),
             "encode_base64" => new { encoded = Base64Text.Encode(arguments.GetProperty("text").GetString()!, OptionalBoolean(arguments, "urlSafe")) },
@@ -125,9 +129,16 @@ static class ToolRegistry
             "generate_dmarc_record" => new { record = EmailRecords.BuildDmarc(OptionalString(arguments, "policy", "reject"), OptionalString(arguments, "subdomainPolicy", ""), OptionalInteger(arguments, "percentage", 100), StringArray(arguments, "ruaEmails"), StringArray(arguments, "rufEmails"), OptionalString(arguments, "adkim", ""), OptionalString(arguments, "aspf", "")) },
             "parse_email_headers" => EmailHeaderParser.Parse(arguments.GetProperty("headers").GetString()!),
             "test_regex" => SafeRegex.Test(arguments.GetProperty("pattern").GetString()!, arguments.GetProperty("text").GetString()!, OptionalBoolean(arguments, "global", true), OptionalBoolean(arguments, "ignoreCase"), OptionalBoolean(arguments, "multiline"), OptionalBoolean(arguments, "dotAll", true)),
+            "encode_file_base64_local" => EncodeFile(arguments),
+            "decode_file_base64_local" => DecodeFile(arguments),
             _ => throw new InvalidOperationException($"Unknown tool: {name}"),
-        };
-        return new { content = new[] { new { type = "text", text = JsonSerializer.Serialize(value, json) } } };
+            };
+            return new { content = new[] { new { type = "text", text = JsonSerializer.Serialize(value, json) } } };
+        }
+        catch (ToolCallException exception)
+        {
+            return new { content = new[] { new { type = "text", text = exception.Message } }, isError = true };
+        }
     }
 
     private static object Tool(string name, string description, object properties, string[] required) =>
@@ -203,4 +214,40 @@ static class ToolRegistry
         if (subnet.BroadcastAddress is not null) value["broadcastAddress"] = subnet.BroadcastAddress;
         return value;
     }
+    private static object EncodeFile(JsonElement arguments)
+    {
+        try
+        {
+            return Base64Files.Encode(arguments.GetProperty("path").GetString()!);
+        }
+        catch (InvalidDataException exception)
+        {
+            throw new ToolCallException(exception.Message);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            throw new ToolCallException("Unable to read file");
+        }
+    }
+    private static object DecodeFile(JsonElement arguments)
+    {
+        try
+        {
+            return Base64Files.Decode(arguments.GetProperty("path").GetString()!, arguments.GetProperty("base64").GetString()!);
+        }
+        catch (FormatException exception)
+        {
+            throw new ToolCallException(exception.Message);
+        }
+        catch (InvalidDataException exception)
+        {
+            throw new ToolCallException(exception.Message);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            throw new ToolCallException("Unable to write file. Choose a new path.");
+        }
+    }
 }
+
+sealed class ToolCallException(string message) : Exception(message);

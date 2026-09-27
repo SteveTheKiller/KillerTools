@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const site = resolve(process.argv[2] ?? '../../killer-tools-site');
@@ -20,6 +22,9 @@ const temperatures = await import(pathToFileURL(resolve(site, 'src/tools/tempera
 const chmod = await import(pathToFileURL(resolve(site, 'src/tools/chmod-calculator/chmod-calculator.service.ts')));
 const svg = await import(pathToFileURL(resolve(site, 'src/tools/svg-placeholder-generator/svg-placeholder-generator.service.ts')));
 const caseConverter = await import(pathToFileURL(resolve(site, 'src/tools/case-converter/case-converter.models.ts')));
+const parityDirectory = await mkdtemp(join(tmpdir(), 'killertools-parity-'));
+const parityFile = join(parityDirectory, 'source.bin');
+await writeFile(parityFile, Buffer.from([0, 1, 2, 254, 255]));
 
 const requests = [
   { operation: 'text_statistics', arguments: { text: '' } },
@@ -85,9 +90,10 @@ const requests = [
   { operation: 'lookup_windows_error', arguments: { query: 'access denied', limit: 5 } },
   { operation: 'lookup_windows_event', arguments: { query: '4625', limit: 5 } },
   { operation: 'lookup_group_policy', arguments: { query: 'minimum password length', limit: 5 } },
+  { operation: 'encode_file_base64_local', arguments: { path: parityFile } },
 ];
 
-const oracleOperations = new Set(['convert_date_time', 'calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv', 'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers', 'test_regex', 'lookup_http_status', 'lookup_port_protocol', 'lookup_exchange_ndr', 'lookup_m365_sku', 'lookup_windows_error', 'lookup_windows_event', 'lookup_group_policy']);
+const oracleOperations = new Set(['convert_date_time', 'calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv', 'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers', 'test_regex', 'lookup_http_status', 'lookup_port_protocol', 'lookup_exchange_ndr', 'lookup_m365_sku', 'lookup_windows_error', 'lookup_windows_event', 'lookup_group_policy', 'encode_file_base64_local']);
 const oracle = spawn(process.execPath, [resolve(site, 'mcp/dist/killermcp.mjs')], { cwd: resolve(site, 'mcp'), stdio: ['pipe', 'pipe', 'pipe'] });
 let oracleBuffer = '';
 let oracleError = '';
@@ -181,4 +187,5 @@ if (run.status !== 0) {
 }
 
 assert.deepEqual(JSON.parse(run.stdout), expected);
-console.log(`${requests.length} live JavaScript parity cases passed for 37 native operations.`);
+await rm(parityDirectory, { recursive: true, force: true });
+console.log(`${requests.length} live JavaScript parity cases passed for 39 native operations.`);

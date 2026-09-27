@@ -59,6 +59,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "lookup_m365_sku" => MicrosoftReferenceResult(operation, arguments),
         "lookup_windows_error" => MicrosoftReferenceResult(operation, arguments),
         "lookup_windows_event" => MicrosoftReferenceResult(operation, arguments),
+        "encode_file_base64_local" => EncodedFileResult(arguments),
         _ => throw new InvalidOperationException($"Unknown parity operation: {operation}"),
     });
 }
@@ -67,6 +68,12 @@ static object DateTimeResult(JsonElement arguments)
 {
     var value = DateTimeConverter.Convert(arguments.GetProperty("value").GetString()!, arguments.GetProperty("inputFormat").GetString()!);
     return new { iso8601 = value.Iso8601, iso9075 = value.Iso9075, rfc3339 = value.Rfc3339, rfc7231 = value.Rfc7231, unixSeconds = value.UnixSeconds, timestampMs = value.TimestampMs, utc = value.Utc, mongoObjectId = value.MongoObjectId, excel = value.Excel };
+}
+
+static object EncodedFileResult(JsonElement arguments)
+{
+    var value = Base64Files.Encode(arguments.GetProperty("path").GetString()!);
+    return new { base64 = value.Base64, byteLength = value.ByteLength };
 }
 
 static object MicrosoftReferenceResult(string operation, JsonElement arguments)
