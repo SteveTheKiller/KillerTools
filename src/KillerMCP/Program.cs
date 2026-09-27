@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Reflection;
 using KillerMCP;
+using KillerMCP.Runtime;
 using KillerTools.Engine.Text;
 using KillerTools.Engine.Math;
 using KillerTools.Engine.Numbers;
@@ -18,6 +19,13 @@ var json = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.C
 var assemblyVersion = Assembly.GetExecutingAssembly().GetName().Version!;
 var currentVersion = $"{assemblyVersion.Major}.{assemblyVersion.Minor}.{assemblyVersion.Build}";
 ToolRegistry.Status = await UpdateChecker.CheckForUpdateAsync(currentVersion);
+var appAdapters = new List<AppAdapter>();
+var killerNotes = await KillerNotesAdapter.CreateAsync(AppDiscovery.Discover("killernotes"));
+if (killerNotes is not null)
+{
+    appAdapters.Add(killerNotes);
+}
+ToolRegistry.SetAdapters(appAdapters);
 string? line;
 while ((line = Console.ReadLine()) is not null)
 {
@@ -48,9 +56,10 @@ while ((line = Console.ReadLine()) is not null)
 static class ToolRegistry
 {
     private static readonly JsonSerializerOptions CamelCaseJson = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    private static IReadOnlyDictionary<string, AppAdapter> Adapters = new Dictionary<string, AppAdapter>();
     public static UpdateStatus Status { get; set; } = null!;
 
-    public static readonly object[] Tools =
+    private static readonly object[] CoreTools =
     [
         Tool("text_statistics", "Count characters, words, lines, and UTF-8 bytes.", new { text = StringSchema() }, ["text"]),
         Tool("convert_case", "Return the case conversions shown by KillerTools.", new { text = StringSchema() }, ["text"]),
@@ -104,12 +113,29 @@ static class ToolRegistry
         Tool("killermcp_update_status", "Check the installed KillerMCP version and whether a newer signed Windows installer is available.", new { }, []),
     ];
 
+    public static object[] Tools => CoreTools.Concat(Adapters.Values.Select(adapter => new
+    {
+        name = adapter.Tool.Name,
+        description = adapter.Tool.Description,
+        inputSchema = adapter.Tool.InputSchema,
+    })).ToArray<object>();
+
+    public static void SetAdapters(IEnumerable<AppAdapter> adapters) => Adapters = adapters.ToDictionary(adapter => adapter.Tool.Name, StringComparer.Ordinal);
+
     public static object Call(JsonElement parameters, JsonSerializerOptions json)
     {
         var name = parameters.GetProperty("name").GetString();
         var arguments = parameters.GetProperty("arguments");
         try
         {
+            if (name is not null && Adapters.TryGetValue(name, out var adapter))
+            {
+                var adapterResult = adapter.CallAsync(arguments, CancellationToken.None).GetAwaiter().GetResult();
+                return adapterResult.IsError
+                    ? new { content = new[] { new { type = "text", text = adapterResult.Text } }, isError = true }
+                    : new { content = new[] { new { type = "text", text = adapterResult.Text } }, isError = false };
+            }
+
             object value = name switch
             {
             "text_statistics" => TextStatistics.Calculate(arguments.GetProperty("text").GetString()!),

@@ -7,5 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\KillerTools.Engine\KillerTools.Engine.csproj" />
+    <ProjectReference Include="..\KillerMCP.Runtime\KillerMCP.Runtime.csproj" />
   </ItemGroup>
 </Project>

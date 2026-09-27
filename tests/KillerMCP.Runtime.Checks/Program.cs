@@ -1,4 +1,23 @@
 using KillerMCP.Runtime;
+using System.Text.Json;
+
+if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_NOTES") == "1")
+{
+    var arguments = Environment.GetCommandLineArgs().Skip(1).ToArray();
+    if (arguments.SequenceEqual(["--help"]))
+    {
+        Console.WriteLine("search <query>");
+        return;
+    }
+    if (arguments.Length == 4 && arguments[0] == "search" && arguments[2] == "--limit")
+    {
+        Console.Write(JsonSerializer.Serialize(new[] { new { title = "Subnet plans", snippet = arguments[1] } }));
+        return;
+    }
+    Environment.ExitCode = 2;
+    Console.Error.Write("Unknown fixture command");
+    return;
+}
 
 var root = Path.Combine(Path.GetTempPath(), "killermcp-discovery-" + Guid.NewGuid().ToString("N"));
 try
@@ -33,6 +52,22 @@ try
     Equal<string?>(null, AppDiscovery.Discover("killerpdf", environment));
     Throws<ArgumentException>(() => AppDiscovery.Discover("unknown", environment));
     Console.WriteLine("PASS native KillerMCP app discovery");
+
+    Environment.SetEnvironmentVariable("KILLERMCP_FAKE_NOTES", "1");
+    var adapter = await KillerNotesAdapter.CreateAsync(Environment.ProcessPath);
+    if (adapter is null)
+    {
+        throw new InvalidOperationException("The KillerNotes fixture adapter was not discovered.");
+    }
+    Equal("killernotes_search", adapter.Tool.Name);
+    using var valid = JsonDocument.Parse("{\"query\":\"subnet\",\"limit\":1}");
+    var result = await adapter.CallAsync(valid.RootElement, CancellationToken.None);
+    Equal(false, result.IsError);
+    Equal("Subnet plans", JsonDocument.Parse(result.Text).RootElement[0].GetProperty("title").GetString());
+    using var invalid = JsonDocument.Parse("{\"query\":\"\"}");
+    Equal(true, (await adapter.CallAsync(invalid.RootElement, CancellationToken.None)).IsError);
+    Environment.SetEnvironmentVariable("KILLERMCP_FAKE_NOTES", null);
+    Console.WriteLine("PASS native KillerNotes adapter");
 }
 finally
 {

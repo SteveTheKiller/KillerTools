@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 const updateDirectory = await mkdtemp(join(tmpdir(), 'killermcp-update-'));
 let updateRequests = 0;
@@ -18,6 +18,13 @@ const environment = {
   ...process.env,
   KILLERMCP_UPDATE_API: `http://127.0.0.1:${updateAddress.port}/latest`,
   KILLERMCP_UPDATE_CACHE: join(updateDirectory, 'status.json'),
+  KILLERNOTES_CLI: resolve('tests/KillerMCP.Runtime.Checks/bin/Debug/net10.0/KillerMCP.Runtime.Checks.exe'),
+  KILLERMCP_FAKE_NOTES: '1',
+  KILLERPDF_CLI: resolve('missing-killerpdf.exe'),
+  KILLERSCAN_CLI: resolve('missing-killerscan.exe'),
+  KILLERSHELL_CLI: resolve('missing-killershell.exe'),
+  KILLENDAR_CLI: resolve('missing-killendar.exe'),
+  KILLERBENCH_CLI: resolve('missing-killerbench.exe'),
 };
 const child = spawn('dotnet', ['run', '--project', 'src/KillerMCP/KillerMCP.csproj', '--no-build'], { stdio: ['pipe', 'pipe', 'inherit'], env: environment });
 let buffer = '';
@@ -68,6 +75,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'evaluate_math',
   'list_film_stocks', 'calculate_reciprocity',
   'killermcp_update_status',
+  'killernotes_search',
 ]);
 const called = await request('tools/call', { name: 'text_statistics', arguments: { text: 'hello world' } });
 assert.deepEqual(JSON.parse(called.content[0].text), { characterCount: 11, wordCount: 2, lineCount: 1, byteSize: 11 });
@@ -135,6 +143,8 @@ assert.equal(JSON.parse(update.content[0].text).updateAvailable, true);
 assert.equal(updateRequests, 1);
 const invalidUpdate = await request('tools/call', { name: 'killermcp_update_status', arguments: { force: true } });
 assert.equal(invalidUpdate.isError, true);
+const notes = await request('tools/call', { name: 'killernotes_search', arguments: { query: 'subnet', limit: 1 } });
+assert.equal(JSON.parse(notes.content[0].text)[0].title, 'Subnet plans');
 child.stdin.end();
 updateServer.close();
 await rm(updateDirectory, { recursive: true, force: true });
