@@ -6,6 +6,10 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const updateDirectory = await mkdtemp(join(tmpdir(), 'killermcp-update-'));
+const pdfSourceOne = join(updateDirectory, 'source-one.pdf');
+const pdfSourceTwo = join(updateDirectory, 'source-two.pdf');
+await writeFile(pdfSourceOne, 'fixture one');
+await writeFile(pdfSourceTwo, 'fixture two');
 let updateRequests = 0;
 const updateServer = createServer((request, response) => {
   updateRequests++;
@@ -24,7 +28,8 @@ const environment = {
   KILLERMCP_FAKE_SHELL: '1',
   KILLERMCP_FAKE_BENCH: '1',
   KILLERMCP_FAKE_SCAN: '1',
-  KILLERPDF_CLI: resolve('missing-killerpdf.exe'),
+  KILLERMCP_FAKE_PDF: '1',
+  KILLERPDF_CLI: resolve('tests/KillerMCP.Runtime.Checks/bin/Debug/net10.0/KillerMCP.Runtime.Checks.exe'),
   KILLERSCAN_CLI: resolve('tests/KillerMCP.Runtime.Checks/bin/Debug/net10.0/KillerMCP.Runtime.Checks.exe'),
   KILLERSHELL_CLI: resolve('tests/KillerMCP.Runtime.Checks/bin/Debug/net10.0/KillerMCP.Runtime.Checks.exe'),
   KILLENDAR_CLI: resolve('tests/KillerMCP.Runtime.Checks/bin/Debug/net10.0/KillerMCP.Runtime.Checks.exe'),
@@ -86,6 +91,12 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'killerscan_local_network', 'killerscan_scan_network', 'killerscan_probe_host',
   'killerscan_mac_vendor', 'killerscan_ping', 'killerscan_trace_route',
   'killerscan_diagnose_host', 'killerscan_watch_hosts', 'killerscan_speed_test',
+  'killerpdf_merge', 'killerpdf_extract_pages', 'killerpdf_split', 'killerpdf_decrypt',
+  'killerpdf_render_pages', 'killerpdf_flatten', 'killerpdf_print', 'killerpdf_ocr',
+  'killerpdf_resave', 'killerpdf_benchmark_render', 'killerpdf_rotate_pages',
+  'killerpdf_delete_pages', 'killerpdf_move_pages', 'killerpdf_insert_blank_page',
+  'killerpdf_duplicate_page', 'killerpdf_document_info', 'killerpdf_search_text',
+  'killerpdf_preflight', 'killerpdf_accessibility',
 ]);
 const called = await request('tools/call', { name: 'text_statistics', arguments: { text: 'hello world' } });
 assert.deepEqual(JSON.parse(called.content[0].text), { characterCount: 11, wordCount: 2, lineCount: 1, byteSize: 11 });
@@ -165,6 +176,12 @@ const network = await request('tools/call', { name: 'killerscan_local_network', 
 assert.equal(JSON.parse(network.content[0].text).localIp, '192.0.2.10');
 const scan = await request('tools/call', { name: 'killerscan_scan_network', arguments: {} });
 assert.equal(JSON.parse(scan.content[0].text)[0].ip, '192.0.2.10');
+const preflight = await request('tools/call', { name: 'killerpdf_preflight', arguments: { path: pdfSourceOne, profile: 'print' } });
+assert.equal(JSON.parse(preflight.content[0].text).valid, true);
+const mergedPath = join(updateDirectory, 'merged.pdf');
+const merged = await request('tools/call', { name: 'killerpdf_merge', arguments: { inputs: [pdfSourceOne, pdfSourceTwo], output: mergedPath } });
+assert.equal(JSON.parse(merged.content[0].text).inputCount, 2);
+assert.equal((await readFile(mergedPath, 'utf8')), 'fixture pdf');
 child.stdin.end();
 updateServer.close();
 await rm(updateDirectory, { recursive: true, force: true });

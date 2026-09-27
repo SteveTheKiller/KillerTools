@@ -1,7 +1,7 @@
 using KillerMCP.Runtime;
 using System.Text.Json;
 
-if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_NOTES") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_KILLENDAR") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_SHELL") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_BENCH") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_SCAN") == "1")
+if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_NOTES") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_KILLENDAR") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_SHELL") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_BENCH") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_SCAN") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_PDF") == "1")
 {
     var arguments = Environment.GetCommandLineArgs().Skip(1).ToArray();
     if (arguments.SequenceEqual(["/help"]) && Environment.GetEnvironmentVariable("KILLERMCP_FAKE_SCAN") == "1")
@@ -31,10 +31,45 @@ if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_NOTES") == "1" || Environ
     }
     if (arguments.SequenceEqual(["--help"]))
     {
+        if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_PDF") == "1") Console.WriteLine("  --merge <out.pdf>\n--extract-pages <in.pdf>\n--split <in.pdf>\n--decrypt <in.pdf>\n--to-image <in.pdf>\n--flatten <in.pdf>\n--print <in.pdf>\n--ocr <in.pdf>\n--batch-resave <in>\n--batch-render <in>\n--rotate-pages <in.pdf>\n--delete-pages <in.pdf>\n--move-pages <in.pdf>\n--insert-blank <in.pdf>\n--duplicate-page <in.pdf>\n--document-info <in.pdf>\n--search-text <in.pdf>\n--preflight <in.pdf>\n--accessibility <in.pdf>");
         if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_NOTES") == "1") Console.WriteLine("search <query>");
         if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_KILLENDAR") == "1") Console.WriteLine("agenda <yyyy-MM-dd>");
         if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_SHELL") == "1") Console.WriteLine("search <folder>");
         return;
+    }
+    if (arguments.Length > 0 && arguments[0] is "--preflight" or "--accessibility")
+    {
+        Console.Write(JsonSerializer.Serialize(new { valid = true, command = arguments[0] }));
+        return;
+    }
+    if (arguments.Length > 0 && arguments[0] is "--print" or "--document-info" or "--search-text")
+    {
+        Console.Write("Fixture action completed");
+        return;
+    }
+    if (arguments.Length > 0 && arguments[0].StartsWith("--", StringComparison.Ordinal))
+    {
+        var outputIndex = arguments[0] switch
+        {
+            "--merge" => 1,
+            "--extract-pages" or "--delete-pages" or "--insert-blank" or "--duplicate-page" => 3,
+            "--rotate-pages" or "--move-pages" => 4,
+            _ => 2,
+        };
+        if (arguments.Length > outputIndex)
+        {
+            var output = arguments[outputIndex];
+            if (arguments[0] is "--split" or "--to-image" or "--batch-render")
+            {
+                Directory.CreateDirectory(output);
+                File.WriteAllText(Path.Combine(output, "page-1.png"), "fixture");
+            }
+            else
+            {
+                File.WriteAllText(output, "fixture pdf");
+            }
+            return;
+        }
     }
     if (arguments.Length == 4 && arguments[0] == "search" && arguments[2] == "--limit")
     {
@@ -179,6 +214,43 @@ try
     Equal(true, (await scanByName["killerscan_probe_host"].CallAsync(badTarget.RootElement, CancellationToken.None)).IsError);
     Environment.SetEnvironmentVariable("KILLERMCP_FAKE_SCAN", null);
     Console.WriteLine("PASS native KillerScan adapters");
+
+    Environment.SetEnvironmentVariable("KILLERMCP_FAKE_PDF", "1");
+    var pdfAdapters = await KillerPdfAdapter.CreateAsync(Environment.ProcessPath);
+    Equal(19, pdfAdapters.Count);
+    var pdfByName = pdfAdapters.ToDictionary(item => item.Tool.Name);
+    var sourceOne = Path.Combine(root, "source-one.pdf");
+    var sourceTwo = Path.Combine(root, "source-two.pdf");
+    File.WriteAllText(sourceOne, "fixture one");
+    File.WriteAllText(sourceTwo, "fixture two");
+    async Task<AppCallResult> Pdf(string name, object arguments)
+    {
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(arguments));
+        return await pdfByName[name].CallAsync(document.RootElement, CancellationToken.None);
+    }
+    Equal(false, (await Pdf("killerpdf_preflight", new { path = sourceOne, profile = "print" })).IsError);
+    Equal(false, (await Pdf("killerpdf_accessibility", new { path = sourceOne })).IsError);
+    Equal(false, (await Pdf("killerpdf_merge", new { inputs = new[] { sourceOne, sourceTwo }, output = Path.Combine(root, "merged.pdf") })).IsError);
+    Equal(false, (await Pdf("killerpdf_extract_pages", new { path = sourceOne, pages = "1", output = Path.Combine(root, "extract.pdf") })).IsError);
+    Equal(false, (await Pdf("killerpdf_split", new { path = sourceOne, outputFolder = Path.Combine(root, "split") })).IsError);
+    Equal(false, (await Pdf("killerpdf_decrypt", new { path = sourceOne, output = Path.Combine(root, "decrypted.pdf"), password = "secret" })).IsError);
+    Equal(false, (await Pdf("killerpdf_render_pages", new { path = sourceOne, outputFolder = Path.Combine(root, "rendered"), pages = "1", dpi = 150, format = "png", transparent = true })).IsError);
+    Equal(false, (await Pdf("killerpdf_flatten", new { path = sourceOne, output = Path.Combine(root, "flattened.pdf"), dpi = 150 })).IsError);
+    Equal(false, (await Pdf("killerpdf_print", new { path = sourceOne, printer = "Fixture", pages = "1", copies = 1 })).IsError);
+    Equal(false, (await Pdf("killerpdf_ocr", new { path = sourceOne, output = Path.Combine(root, "ocr.pdf"), language = "eng" })).IsError);
+    Equal(false, (await Pdf("killerpdf_resave", new { path = sourceOne, output = Path.Combine(root, "resaved.pdf") })).IsError);
+    Equal(false, (await Pdf("killerpdf_benchmark_render", new { path = sourceOne, outputFolder = Path.Combine(root, "benchmark"), size = 1024, pageLimit = 1 })).IsError);
+    Equal(false, (await Pdf("killerpdf_rotate_pages", new { path = sourceOne, pages = "1", degrees = 90, output = Path.Combine(root, "rotated.pdf") })).IsError);
+    Equal(false, (await Pdf("killerpdf_delete_pages", new { path = sourceOne, pages = "1", output = Path.Combine(root, "deleted.pdf") })).IsError);
+    Equal(false, (await Pdf("killerpdf_move_pages", new { path = sourceOne, pages = "1", position = 1, output = Path.Combine(root, "moved.pdf") })).IsError);
+    Equal(false, (await Pdf("killerpdf_insert_blank_page", new { path = sourceOne, position = 1, width = 612, height = 792, output = Path.Combine(root, "blank.pdf") })).IsError);
+    Equal(false, (await Pdf("killerpdf_duplicate_page", new { path = sourceOne, page = 1, output = Path.Combine(root, "duplicate.pdf") })).IsError);
+    Equal(false, (await Pdf("killerpdf_document_info", new { path = sourceOne })).IsError);
+    Equal(false, (await Pdf("killerpdf_search_text", new { path = sourceOne, query = "fixture" })).IsError);
+    Equal(true, (await Pdf("killerpdf_extract_pages", new { path = sourceOne, pages = "bad", output = Path.Combine(root, "bad.pdf") })).IsError);
+    Equal(true, (await Pdf("killerpdf_merge", new { inputs = new[] { sourceOne, sourceTwo }, output = Path.Combine(root, "merged.pdf") })).IsError);
+    Environment.SetEnvironmentVariable("KILLERMCP_FAKE_PDF", null);
+    Console.WriteLine("PASS native KillerPDF adapters");
 }
 finally
 {
