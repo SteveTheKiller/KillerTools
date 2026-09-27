@@ -36,6 +36,7 @@ if (killerShell is not null)
     appAdapters.Add(killerShell);
 }
 appAdapters.AddRange(KillerBenchAdapter.Create(AppDiscovery.Discover("killerbench")));
+appAdapters.AddRange(await KillerScanAdapter.CreateAsync(AppDiscovery.Discover("killerscan")));
 ToolRegistry.SetAdapters(appAdapters);
 string? line;
 while ((line = Console.ReadLine()) is not null)

@@ -23,8 +23,9 @@ const environment = {
   KILLERMCP_FAKE_KILLENDAR: '1',
   KILLERMCP_FAKE_SHELL: '1',
   KILLERMCP_FAKE_BENCH: '1',
+  KILLERMCP_FAKE_SCAN: '1',
   KILLERPDF_CLI: resolve('missing-killerpdf.exe'),
-  KILLERSCAN_CLI: resolve('missing-killerscan.exe'),
+  KILLERSCAN_CLI: resolve('tests/KillerMCP.Runtime.Checks/bin/Debug/net10.0/KillerMCP.Runtime.Checks.exe'),
   KILLERSHELL_CLI: resolve('tests/KillerMCP.Runtime.Checks/bin/Debug/net10.0/KillerMCP.Runtime.Checks.exe'),
   KILLENDAR_CLI: resolve('tests/KillerMCP.Runtime.Checks/bin/Debug/net10.0/KillerMCP.Runtime.Checks.exe'),
   KILLERBENCH_CLI: resolve('tests/KillerMCP.Runtime.Checks/bin/Debug/net10.0/KillerMCP.Runtime.Checks.exe'),
@@ -82,6 +83,9 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'killendar_agenda',
   'killershell_search_files',
   'killerbench_device_code', 'killerbench_win32_code',
+  'killerscan_local_network', 'killerscan_scan_network', 'killerscan_probe_host',
+  'killerscan_mac_vendor', 'killerscan_ping', 'killerscan_trace_route',
+  'killerscan_diagnose_host', 'killerscan_watch_hosts', 'killerscan_speed_test',
 ]);
 const called = await request('tools/call', { name: 'text_statistics', arguments: { text: 'hello world' } });
 assert.deepEqual(JSON.parse(called.content[0].text), { characterCount: 11, wordCount: 2, lineCount: 1, byteSize: 11 });
@@ -157,6 +161,10 @@ const files = await request('tools/call', { name: 'killershell_search_files', ar
 assert.equal(JSON.parse(files.content[0].text).results.length, 1);
 const deviceCode = await request('tools/call', { name: 'killerbench_device_code', arguments: { code: '31' } });
 assert.equal(JSON.parse(deviceCode.content[0].text).name, 'Device problem');
+const network = await request('tools/call', { name: 'killerscan_local_network', arguments: {} });
+assert.equal(JSON.parse(network.content[0].text).localIp, '192.0.2.10');
+const scan = await request('tools/call', { name: 'killerscan_scan_network', arguments: {} });
+assert.equal(JSON.parse(scan.content[0].text)[0].ip, '192.0.2.10');
 child.stdin.end();
 updateServer.close();
 await rm(updateDirectory, { recursive: true, force: true });

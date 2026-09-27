@@ -1,9 +1,34 @@
 using KillerMCP.Runtime;
 using System.Text.Json;
 
-if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_NOTES") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_KILLENDAR") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_SHELL") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_BENCH") == "1")
+if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_NOTES") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_KILLENDAR") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_SHELL") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_BENCH") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_SCAN") == "1")
 {
     var arguments = Environment.GetCommandLineArgs().Skip(1).ToArray();
+    if (arguments.SequenceEqual(["/help"]) && Environment.GetEnvironmentVariable("KILLERMCP_FAKE_SCAN") == "1")
+    {
+        Console.WriteLine("/network /scan [targets] /probe <IPv4> /vendor <MAC> /ping <target> /trace <target> /diagnose <target> /watch <targets> /speedtest");
+        return;
+    }
+    if (arguments.SequenceEqual(["/network"]))
+    {
+        Console.WriteLine("INTERFACE  Ethernet\nLOCAL IP  192.0.2.10\nSUBNET  192.0.2.0/24\nGATEWAY  192.0.2.1\nDNS  192.0.2.53");
+        return;
+    }
+    if (arguments.Length >= 2 && arguments[0] == "/vendor")
+    {
+        Console.Write("Cisco Systems");
+        return;
+    }
+    if (arguments.Length > 0 && arguments[0] is "/scan" or "/probe")
+    {
+        Console.Write("[{\"ip\":\"192.0.2.10\"}]");
+        return;
+    }
+    if (arguments.Length > 0 && arguments[0] is "/ping" or "/trace" or "/diagnose" or "/watch" or "/speedtest")
+    {
+        Console.Write(JsonSerializer.Serialize(new { command = arguments[0], ok = true }));
+        return;
+    }
     if (arguments.SequenceEqual(["--help"]))
     {
         if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_NOTES") == "1") Console.WriteLine("search <query>");
@@ -129,6 +154,31 @@ try
     Equal(true, (await benchAdapters[1].CallAsync(badCode.RootElement, CancellationToken.None)).IsError);
     Environment.SetEnvironmentVariable("KILLERMCP_FAKE_BENCH", null);
     Console.WriteLine("PASS native KillerBench adapters");
+
+    Environment.SetEnvironmentVariable("KILLERMCP_FAKE_SCAN", "1");
+    var scanAdapters = await KillerScanAdapter.CreateAsync(Environment.ProcessPath);
+    Equal(9, scanAdapters.Count);
+    var scanByName = scanAdapters.ToDictionary(item => item.Tool.Name);
+    using var empty = JsonDocument.Parse("{}");
+    var networkResult = await scanByName["killerscan_local_network"].CallAsync(empty.RootElement, CancellationToken.None);
+    Equal("192.0.2.10", JsonDocument.Parse(networkResult.Text).RootElement.GetProperty("localIp").GetString());
+    var scanResult = await scanByName["killerscan_scan_network"].CallAsync(empty.RootElement, CancellationToken.None);
+    Equal(1, JsonDocument.Parse(scanResult.Text).RootElement.GetArrayLength());
+    using var probe = JsonDocument.Parse("{\"target\":\"192.0.2.20\"}");
+    Equal(false, (await scanByName["killerscan_probe_host"].CallAsync(probe.RootElement, CancellationToken.None)).IsError);
+    using var vendor = JsonDocument.Parse("{\"mac\":\"00:00:0C:00:00:00\"}");
+    Equal("Cisco Systems", JsonDocument.Parse((await scanByName["killerscan_mac_vendor"].CallAsync(vendor.RootElement, CancellationToken.None)).Text).RootElement.GetProperty("vendor").GetString());
+    using var target = JsonDocument.Parse("{\"target\":\"example.com\"}");
+    Equal(false, (await scanByName["killerscan_ping"].CallAsync(target.RootElement, CancellationToken.None)).IsError);
+    Equal(false, (await scanByName["killerscan_trace_route"].CallAsync(target.RootElement, CancellationToken.None)).IsError);
+    Equal(false, (await scanByName["killerscan_diagnose_host"].CallAsync(target.RootElement, CancellationToken.None)).IsError);
+    using var targets = JsonDocument.Parse("{\"targets\":[\"192.0.2.20\"]}");
+    Equal(false, (await scanByName["killerscan_watch_hosts"].CallAsync(targets.RootElement, CancellationToken.None)).IsError);
+    Equal(false, (await scanByName["killerscan_speed_test"].CallAsync(empty.RootElement, CancellationToken.None)).IsError);
+    using var badTarget = JsonDocument.Parse("{\"target\":\"example.com\"}");
+    Equal(true, (await scanByName["killerscan_probe_host"].CallAsync(badTarget.RootElement, CancellationToken.None)).IsError);
+    Environment.SetEnvironmentVariable("KILLERMCP_FAKE_SCAN", null);
+    Console.WriteLine("PASS native KillerScan adapters");
 }
 finally
 {
