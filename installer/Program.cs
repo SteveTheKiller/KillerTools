@@ -206,6 +206,14 @@ namespace KillerMCP.Setup
                 key.SetValue("NoModify", 1);
                 key.SetValue("NoRepair", 1);
             }
+            using (RegistryKey key = Registry.CurrentUser.OpenSubKey(RegistryPath(destination)) ?? throw new InvalidOperationException("KillerMCP could not verify its uninstall entry."))
+            {
+                if (!string.Equals(key.GetValue("DisplayVersion") as string, CurrentVersion, StringComparison.Ordinal)
+                    || !string.Equals(key.GetValue("SetupSha256") as string, Sha256(setup), StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException("KillerMCP could not verify its updated uninstall entry.");
+                }
+            }
         }
 
         private static void ValidateSetupRegistration(string destination)

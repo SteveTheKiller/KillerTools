@@ -16,7 +16,7 @@ public static class ClientConfiguration
             .ToDictionary(item => (string)item.Key, item => item.Value?.ToString(), StringComparer.OrdinalIgnoreCase);
         var messages = new List<string>();
 
-        var codex = FindExecutable("CODEX_CLI_PATH", OperatingSystem.IsWindows() ? "codex.exe" : "codex", values);
+        var codex = FindCodex(values);
         if (codex is not null) messages.Add(remove ? RemoveCodex(codex, executablePath) : RegisterCodex(codex, executablePath));
 
         foreach (var client in JsonClients(values))
@@ -139,6 +139,23 @@ public static class ClientConfiguration
     {
         var configured = Value(environment, overrideName);
         return !string.IsNullOrWhiteSpace(configured) && File.Exists(configured) ? Path.GetFullPath(configured) : FindOnPath(executable, environment);
+    }
+
+    private static string? FindCodex(IReadOnlyDictionary<string, string?> environment)
+    {
+        var configured = Value(environment, "CODEX_CLI_PATH");
+        if (!string.IsNullOrWhiteSpace(configured)) return File.Exists(configured) ? Path.GetFullPath(configured) : null;
+        var found = FindOnPath(OperatingSystem.IsWindows() ? "codex.exe" : "codex", environment);
+        if (found is not null || !OperatingSystem.IsWindows()) return found;
+        var local = Value(environment, "LOCALAPPDATA") ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var root = Path.Combine(local, "OpenAI", "Codex", "bin");
+        try
+        {
+            return Directory.Exists(root)
+                ? Directory.GetFiles(root, "codex.exe", SearchOption.AllDirectories).OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault()
+                : null;
+        }
+        catch { return null; }
     }
 
     private static string? FindOnPath(string executable, IReadOnlyDictionary<string, string?> environment)
