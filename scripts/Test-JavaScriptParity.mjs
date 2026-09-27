@@ -19,6 +19,7 @@ const integerBase = await import(pathToFileURL(resolve(site, 'src/tools/integer-
 const temperatures = await import(pathToFileURL(resolve(site, 'src/tools/temperature-converter/temperature-converter.models.ts')));
 const chmod = await import(pathToFileURL(resolve(site, 'src/tools/chmod-calculator/chmod-calculator.service.ts')));
 const svg = await import(pathToFileURL(resolve(site, 'src/tools/svg-placeholder-generator/svg-placeholder-generator.service.ts')));
+const caseConverter = await import(pathToFileURL(resolve(site, 'src/tools/case-converter/case-converter.models.ts')));
 
 const requests = [
   { operation: 'text_statistics', arguments: { text: '' } },
@@ -26,6 +27,8 @@ const requests = [
   { operation: 'text_statistics', arguments: { text: 'a\r\né' } },
   { operation: 'text_statistics', arguments: { text: ' a ' } },
   { operation: 'text_statistics', arguments: { text: '😀 tools' } },
+  { operation: 'convert_case', arguments: { text: 'hello world' } },
+  { operation: 'convert_case', arguments: { text: 'XMLHttp request' } },
   { operation: 'calculate_percentage', arguments: { mode: 'percent_of', x: 25, y: 200 } },
   { operation: 'calculate_percentage', arguments: { mode: 'what_percent', x: 1, y: 3 } },
   { operation: 'calculate_percentage', arguments: { mode: 'change', x: 10, y: 12 } },
@@ -127,6 +130,7 @@ for (const { operation, arguments: input } of requests) {
   if (operation === 'text_statistics') {
     expected.push(statistics.getTextStatistics(input.text)); continue;
   }
+  if (operation === 'convert_case') { expected.push(caseConverter.convertCase(input.text)); continue; }
   if (operation === 'encode_base64') { expected.push({ encoded: base64.textToBase64(input.text, { makeUrlSafe: input.urlSafe }) }); continue; }
   if (operation === 'decode_base64') { expected.push({ text: base64.base64ToText(input.encoded, { makeUrlSafe: input.urlSafe }) }); continue; }
   if (operation === 'text_to_ascii_binary') { expected.push({ binary: binary.convertTextToAsciiBinary(input.text) }); continue; }
@@ -175,4 +179,4 @@ if (run.status !== 0) {
 }
 
 assert.deepEqual(JSON.parse(run.stdout), expected);
-console.log(`${requests.length} live JavaScript parity cases passed for 35 native operations.`);
+console.log(`${requests.length} live JavaScript parity cases passed for 36 native operations.`);

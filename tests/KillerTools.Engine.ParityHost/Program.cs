@@ -22,6 +22,7 @@ foreach (var request in input.RootElement.EnumerateArray())
     output.Add(operation switch
     {
         "text_statistics" => TextStatisticsResult(arguments),
+        "convert_case" => CaseConverter.Convert(arguments.GetProperty("text").GetString()!).Select(item => new { label = item.Label, value = item.Value }),
         "calculate_percentage" => PercentageResult(arguments),
         "encode_base64" => new { encoded = Base64Text.Encode(arguments.GetProperty("text").GetString()!, arguments.TryGetProperty("urlSafe", out var encodeSafe) && encodeSafe.GetBoolean()) },
         "decode_base64" => new { text = Base64Text.Decode(arguments.GetProperty("encoded").GetString()!, arguments.TryGetProperty("urlSafe", out var decodeSafe) && decodeSafe.GetBoolean()) },

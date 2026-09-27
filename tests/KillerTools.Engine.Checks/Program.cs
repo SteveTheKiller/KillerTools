@@ -13,6 +13,7 @@ var checks = new (string Name, Action Run)[]
     ("Unicode entities", CheckUnicodeEntities),
     ("percentages", CheckPercentages),
     ("text conversions", CheckTextConversions),
+    ("case conversions", CheckCaseConversions),
     ("HTML entities and text diff", CheckHtmlAndDiff),
     ("IP network calculations", CheckNetworkCalculations),
     ("URL and CSV conversions", CheckUrlAndCsv),
@@ -31,6 +32,14 @@ foreach (var check in checks)
 {
     check.Run();
     Console.WriteLine($"PASS {check.Name}");
+}
+
+static void CheckCaseConversions()
+{
+    var values = CaseConverter.Convert("hello world");
+    Equal(14, values.Count);
+    Equal("helloWorld", values.Single(value => value.Label == "Camelcase").Value);
+    Equal("Hello-World", values.Single(value => value.Label == "Headercase").Value);
 }
 
 static void CheckGroupPolicyLookup()
