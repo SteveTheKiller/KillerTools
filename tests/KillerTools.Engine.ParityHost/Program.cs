@@ -51,6 +51,8 @@ foreach (var request in input.RootElement.EnumerateArray())
         "test_regex" => RegexResult(arguments),
         "lookup_http_status" => HttpStatusResult(arguments),
         "lookup_port_protocol" => PortProtocolResult(arguments),
+        "lookup_group_policy" => GroupPolicyLookup.Search(arguments.GetProperty("query").GetString()!, arguments.GetProperty("limit").GetInt32())
+            .Select(item => new { category = item.Category, name = item.Name, path = item.Path, registry = item.Registry, defaultValue = item.DefaultValue, recommendedValue = item.RecommendedValue, description = item.Description, severity = item.Severity }),
         "lookup_exchange_ndr" => MicrosoftReferenceResult(operation, arguments),
         "lookup_m365_sku" => MicrosoftReferenceResult(operation, arguments),
         "lookup_windows_error" => MicrosoftReferenceResult(operation, arguments),

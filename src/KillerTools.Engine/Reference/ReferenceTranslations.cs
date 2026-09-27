@@ -4,6 +4,10 @@ public static class ReferenceTranslations
 {
     private static readonly string[] Locales = ["bn", "cs", "de", "es", "fr", "hu", "it", "ja", "kk", "no", "pl", "pt", "ru", "tr", "uk", "vi", "zh", "zh-TW"];
     private static readonly Lazy<IReadOnlyDictionary<string, IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>>> Catalogs = new(Load);
+    private static readonly Lazy<IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>> GroupPolicyCatalogs = new(() => Locales.ToDictionary(
+        locale => locale,
+        locale => (IReadOnlyDictionary<string, string>)EmbeddedCatalog.DeserializeBrotliBase64<Dictionary<string, string>>($"KillerTools.Engine.Data.group-policy-{locale}.br64"),
+        StringComparer.OrdinalIgnoreCase));
 
     public static IReadOnlyList<string> SupportedLocales => Locales;
 
@@ -22,7 +26,10 @@ public static class ReferenceTranslations
             return value;
         }
 
-        return Catalogs.Value[normalized].TryGetValue(tool, out var translations)
+        var translations = tool.Equals("group-policy-reference", StringComparison.Ordinal)
+            ? GroupPolicyCatalogs.Value[normalized]
+            : Catalogs.Value[normalized].GetValueOrDefault(tool);
+        return translations is not null
             && translations.TryGetValue(value, out var translated)
             ? translated
             : value;

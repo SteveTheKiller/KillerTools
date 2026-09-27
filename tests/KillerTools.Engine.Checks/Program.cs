@@ -22,6 +22,7 @@ var checks = new (string Name, Action Run)[]
     ("HTTP status lookup", CheckHttpStatusLookup),
     ("port and protocol lookup", CheckPortProtocolLookup),
     ("Microsoft reference lookups", CheckMicrosoftReferenceLookups),
+    ("group policy lookup", CheckGroupPolicyLookup),
     ("reference translations", CheckReferenceTranslations),
     ("portable utilities", CheckPortableUtilities),
 };
@@ -30,6 +31,13 @@ foreach (var check in checks)
 {
     check.Run();
     Console.WriteLine($"PASS {check.Name}");
+}
+
+static void CheckGroupPolicyLookup()
+{
+    Equal(633, GroupPolicyLookup.Count);
+    Equal("Minimum Password Length", GroupPolicyLookup.Search("minimum password length", 1)[0].Name);
+    Equal("Độ dài mật khẩu tối thiểu", ReferenceTranslations.Translate("group-policy-reference", "vi", "Minimum Password Length"));
 }
 
 static void CheckReferenceTranslations()
