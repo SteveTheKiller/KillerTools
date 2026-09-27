@@ -35,6 +35,7 @@ var checks = new (string Name, Action Run)[]
     ("RSA key generation", CheckRsa),
     ("password strength", CheckPasswordStrength),
     ("bounded math", CheckBoundedMath),
+    ("film reciprocity", CheckFilmReciprocity),
 };
 
 foreach (var check in checks)
@@ -247,6 +248,18 @@ static void CheckBoundedMath()
     Equal(1024d, BoundedMath.Evaluate("2^10"));
     Throws<FormatException>(() => BoundedMath.Evaluate("2^13"));
     Throws<FormatException>(() => BoundedMath.Evaluate("unknown(1)"));
+}
+
+static void CheckFilmReciprocity()
+{
+    Equal(41, FilmReciprocity.List().Count);
+    Equal("HP5 Plus", FilmReciprocity.List()[0].Name);
+    var adjusted = FilmReciprocity.Calculate("ilford-hp5", 10);
+    Equal(System.Math.Pow(10, 1.31), adjusted.AdjustedSeconds);
+    Equal(false, adjusted.NoFailure);
+    var acros = FilmReciprocity.Calculate("fuji-acros100ii", 120);
+    Equal(120d, acros.AdjustedSeconds);
+    Equal(true, acros.NoFailure);
 }
 
 static void CheckHtmlAndDiff()

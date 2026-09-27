@@ -91,6 +91,8 @@ static class ToolRegistry
         Tool("generate_rsa_keypair_private", "Generate an RSA PEM key pair locally.", new { bits = EnumSchema("2048", "3072", "4096") }, []),
         Tool("analyze_password_private", "Estimate password strength and crack time locally.", new { password = new { type = "string", maxLength = 8192 } }, ["password"]),
         Tool("evaluate_math", "Evaluate a bounded arithmetic expression.", new { expression = new { type = "string", minLength = 1, maxLength = 256 } }, ["expression"]),
+        Tool("list_film_stocks", "List the film stocks available in KillerTools Reciprocity Calculator.", new { }, []),
+        Tool("calculate_reciprocity", "Calculate reciprocity failure adjustment for a film stock.", new { filmStockId = new { type = "string", minLength = 1, maxLength = 64 }, meteredSeconds = new { type = "number", minimum = 0.0001, maximum = 3600 } }, ["filmStockId", "meteredSeconds"]),
     ];
 
     public static object Call(JsonElement parameters, JsonSerializerOptions json)
@@ -148,6 +150,8 @@ static class ToolRegistry
             "generate_rsa_keypair_private" => RsaKeyPairs.Generate(int.Parse(OptionalString(arguments, "bits", "2048"), System.Globalization.CultureInfo.InvariantCulture)),
             "analyze_password_private" => PasswordStrength.Analyze(arguments.GetProperty("password").GetString()!),
             "evaluate_math" => EvaluateMath(arguments),
+            "list_film_stocks" => FilmReciprocity.List(),
+            "calculate_reciprocity" => Reciprocity(arguments),
             _ => throw new InvalidOperationException($"Unknown tool: {name}"),
             };
             return new { content = new[] { new { type = "text", text = JsonSerializer.Serialize(value, json) } } };
@@ -322,6 +326,17 @@ static class ToolRegistry
         catch (Exception exception) when (exception is FormatException or ArithmeticException)
         {
             throw new ToolCallException("Invalid or unsupported math expression");
+        }
+    }
+    private static object Reciprocity(JsonElement arguments)
+    {
+        try
+        {
+            return FilmReciprocity.Calculate(arguments.GetProperty("filmStockId").GetString()!, arguments.GetProperty("meteredSeconds").GetDouble());
+        }
+        catch (KeyNotFoundException exception)
+        {
+            throw new ToolCallException(exception.Message);
         }
     }
 

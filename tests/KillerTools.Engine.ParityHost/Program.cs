@@ -66,6 +66,8 @@ foreach (var request in input.RootElement.EnumerateArray())
         "parse_jwt_private" => JwtResult(arguments),
         "analyze_password_private" => PasswordStrengthResult(arguments),
         "evaluate_math" => new { value = BoundedMath.Evaluate(arguments.GetProperty("expression").GetString()!) },
+        "list_film_stocks" => FilmReciprocity.List().Select(stock => new { id = stock.Id, name = stock.Name, manufacturer = stock.Manufacturer, iso = stock.Iso, type = stock.Type }),
+        "calculate_reciprocity" => ReciprocityResult(arguments),
         _ => throw new InvalidOperationException($"Unknown parity operation: {operation}"),
     });
 }
@@ -103,6 +105,12 @@ static object PasswordStrengthResult(JsonElement arguments)
 {
     var value = PasswordStrength.Analyze(arguments.GetProperty("password").GetString()!);
     return new { entropy = value.Entropy, charsetLength = value.CharsetLength, passwordLength = value.PasswordLength, crackDurationFormatted = value.CrackDurationFormatted, secondsToCrack = value.SecondsToCrack, score = value.Score };
+}
+
+static object ReciprocityResult(JsonElement arguments)
+{
+    var value = FilmReciprocity.Calculate(arguments.GetProperty("filmStockId").GetString()!, arguments.GetProperty("meteredSeconds").GetDouble());
+    return new { adjustedSeconds = value.AdjustedSeconds, extraStops = value.ExtraStops, noFailure = value.NoFailure };
 }
 
 static object MicrosoftReferenceResult(string operation, JsonElement arguments)

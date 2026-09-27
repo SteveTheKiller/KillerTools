@@ -49,6 +49,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'generate_rsa_keypair_private',
   'analyze_password_private',
   'evaluate_math',
+  'list_film_stocks', 'calculate_reciprocity',
 ]);
 const called = await request('tools/call', { name: 'text_statistics', arguments: { text: 'hello world' } });
 assert.deepEqual(JSON.parse(called.content[0].text), { characterCount: 11, wordCount: 2, lineCount: 1, byteSize: 11 });
@@ -105,5 +106,9 @@ const strength = await request('tools/call', { name: 'analyze_password_private',
 assert.equal(JSON.parse(strength.content[0].text).charsetLength, 94);
 const math = await request('tools/call', { name: 'evaluate_math', arguments: { expression: 'sqrt(81) + max(2, 5)' } });
 assert.equal(JSON.parse(math.content[0].text).value, 14);
+const stocks = await request('tools/call', { name: 'list_film_stocks', arguments: {} });
+assert.equal(JSON.parse(stocks.content[0].text).length, 41);
+const reciprocity = await request('tools/call', { name: 'calculate_reciprocity', arguments: { filmStockId: 'fuji-acros100ii', meteredSeconds: 120 } });
+assert.equal(JSON.parse(reciprocity.content[0].text).noFailure, true);
 child.stdin.end();
 console.log('Native KillerMCP stdio handshake, tool listing, and tool call passed.');
