@@ -1,8 +1,10 @@
 <Solution>
   <Project Path="src/KillerTools.Engine/KillerTools.Engine.csproj" />
   <Project Path="src/KillerMCP.Clients/KillerMCP.Clients.csproj" />
+  <Project Path="src/KillerMCP.Runtime/KillerMCP.Runtime.csproj" />
   <Project Path="src/KillerMCP/KillerMCP.csproj" />
   <Project Path="tests/KillerMCP.Clients.Checks/KillerMCP.Clients.Checks.csproj" />
+  <Project Path="tests/KillerMCP.Runtime.Checks/KillerMCP.Runtime.Checks.csproj" />
   <Project Path="tests/KillerTools.Engine.Checks/KillerTools.Engine.Checks.csproj" />
   <Project Path="tests/KillerTools.Engine.ParityHost/KillerTools.Engine.ParityHost.csproj" />
 </Solution>
