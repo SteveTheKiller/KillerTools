@@ -15,6 +15,7 @@ var checks = new (string Name, Action Run)[]
     ("percentages", CheckPercentages),
     ("text conversions", CheckTextConversions),
     ("case conversions", CheckCaseConversions),
+    ("Lorem Ipsum generation", CheckLoremIpsum),
     ("date time conversions", CheckDateTimeConversions),
     ("HTML entities and text diff", CheckHtmlAndDiff),
     ("IP network calculations", CheckNetworkCalculations),
@@ -44,6 +45,13 @@ foreach (var check in checks)
 {
     check.Run();
     Console.WriteLine($"PASS {check.Name}");
+}
+
+static void CheckLoremIpsum()
+{
+    Equal("Lorem ipsum dolor sit amet, consectetur adipiscing elit.", LoremIpsum.Generate(1, 1, 4));
+    Equal("<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>", LoremIpsum.Generate(1, 1, 4, true, true));
+    Throws<ArgumentOutOfRangeException>(() => LoremIpsum.Generate(11));
 }
 
 static void CheckDateTimeConversions()

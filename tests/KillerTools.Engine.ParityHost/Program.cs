@@ -68,6 +68,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "encode_file_base64_local" => EncodedFileResult(arguments),
         "otp_private" => OtpResult(arguments),
         "generate_uuids" => new { ids = IdentifierGenerators.GenerateUuids(arguments.GetProperty("version").GetString()!, arguments.GetProperty("count").GetInt32(), arguments.TryGetProperty("name", out var name) ? name.GetString() : null, arguments.TryGetProperty("namespace", out var namespaceValue) ? namespaceValue.GetString() : null) },
+        "generate_lorem_ipsum" => new { text = LoremIpsum.Generate(arguments.GetProperty("paragraphCount").GetInt32(), arguments.GetProperty("sentencePerParagraph").GetInt32(), arguments.GetProperty("wordCount").GetInt32(), arguments.GetProperty("startWithLoremIpsum").GetBoolean(), arguments.GetProperty("asHTML").GetBoolean()) },
         "parse_jwt_private" => JwtResult(arguments),
         "analyze_password_private" => PasswordStrengthResult(arguments),
         "evaluate_math" => new { value = BoundedMath.Evaluate(arguments.GetProperty("expression").GetString()!) },

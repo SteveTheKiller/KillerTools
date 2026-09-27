@@ -23,6 +23,7 @@
   "format_json": "verified",
   "calculate_ipv4_subnet": "verified",
   "generate_ipv6_ula": "verified",
+  "generate_lorem_ipsum": "verified",
   "generate_otp_secret_private": "verified",
   "generate_ulids": "verified",
   "generate_uuids": "verified",

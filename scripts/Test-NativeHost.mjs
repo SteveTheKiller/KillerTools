@@ -78,7 +78,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'test_regex',
   'encode_file_base64_local', 'decode_file_base64_local',
   'otp_private', 'generate_otp_secret_private',
-  'generate_ulids', 'generate_uuids',
+  'generate_ulids', 'generate_uuids', 'generate_lorem_ipsum',
   'parse_jwt_private',
   'generate_rsa_keypair_private',
   'analyze_password_private',
@@ -154,6 +154,8 @@ const ulids = await request('tools/call', { name: 'generate_ulids', arguments: {
 assert.match(JSON.parse(ulids.content[0].text).ids[0], /^[0-9A-HJKMNP-TV-Z]{26}$/);
 const uuids = await request('tools/call', { name: 'generate_uuids', arguments: { version: 'v5', count: 1, name: 'example.com', namespace: '6ba7b810-9dad-11d1-80b4-00c04fd430c8' } });
 assert.deepEqual(JSON.parse(uuids.content[0].text).ids, ['cfbff0d1-9375-5685-968c-48ce8b15ae17']);
+const lorem = await request('tools/call', { name: 'generate_lorem_ipsum', arguments: { paragraphCount: 1, sentencePerParagraph: 1, wordCount: 4 } });
+assert.equal(JSON.parse(lorem.content[0].text).text, 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.');
 const jwt = await request('tools/call', { name: 'parse_jwt_private', arguments: { token: 'eyJhbGciOiJub25lIn0.eyJzdWIiOiJsb2NhbCJ9.x' } });
 assert.equal(JSON.parse(jwt.content[0].text).signatureVerified, false);
 const rsa = await request('tools/call', { name: 'generate_rsa_keypair_private', arguments: { bits: '2048' } });
