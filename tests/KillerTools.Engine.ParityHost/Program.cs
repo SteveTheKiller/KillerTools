@@ -51,6 +51,10 @@ foreach (var request in input.RootElement.EnumerateArray())
         "diff_json" => StructuredJson.Diff(arguments.GetProperty("left").GetString()!, arguments.GetProperty("right").GetString()!, arguments.GetProperty("onlyDifferences").GetBoolean()),
         "convert_xml_json" => new { text = arguments.GetProperty("direction").GetString() == "xml_to_json" ? XmlJsonConverter.XmlToJson(arguments.GetProperty("text").GetString()!) : XmlJsonConverter.JsonToXml(arguments.GetProperty("text").GetString()!) },
         "format_xml" => new { text = XmlFormatter.Format(arguments.GetProperty("text").GetString()!, arguments.GetProperty("indentSize").GetInt32(), arguments.GetProperty("collapseContent").GetBoolean()) },
+        "convert_json" => StructuredConversion(arguments, "json"),
+        "convert_yaml" => StructuredConversion(arguments, "yaml"),
+        "convert_toml" => StructuredConversion(arguments, "toml"),
+        "format_yaml" => new { text = StructuredTextConverter.FormatYaml(arguments.GetProperty("text").GetString()!, arguments.GetProperty("indentSize").GetInt32(), arguments.GetProperty("sortKeys").GetBoolean()) },
         "json_to_csv" => new { csv = JsonCsv.Convert(arguments.GetProperty("rows")) },
         "parse_url" => UrlResult(arguments),
         "generate_spf_record" => SpfResult(arguments),
@@ -86,6 +90,23 @@ static object DateTimeResult(JsonElement arguments)
 {
     var value = DateTimeConverter.Convert(arguments.GetProperty("value").GetString()!, arguments.GetProperty("inputFormat").GetString()!);
     return new { iso8601 = value.Iso8601, iso9075 = value.Iso9075, rfc3339 = value.Rfc3339, rfc7231 = value.Rfc7231, unixSeconds = value.UnixSeconds, timestampMs = value.TimestampMs, utc = value.Utc, mongoObjectId = value.MongoObjectId, excel = value.Excel };
+}
+
+static object StructuredConversion(JsonElement arguments, string from)
+{
+    var text = arguments.GetProperty("text").GetString()!;
+    var to = arguments.GetProperty("to").GetString();
+    var converted = (from, to) switch
+    {
+        ("json", "yaml") => StructuredTextConverter.JsonToYaml(text),
+        ("json", "toml") => StructuredTextConverter.JsonToToml(text),
+        ("yaml", "json") => StructuredTextConverter.YamlToJson(text),
+        ("yaml", "toml") => StructuredTextConverter.YamlToToml(text),
+        ("toml", "json") => StructuredTextConverter.TomlToJson(text),
+        ("toml", "yaml") => StructuredTextConverter.TomlToYaml(text),
+        _ => throw new InvalidOperationException(),
+    };
+    return new { text = converted };
 }
 
 static object DevelopmentOptionsResult() => new

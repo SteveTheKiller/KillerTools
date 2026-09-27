@@ -71,7 +71,8 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'convert_date_time', 'lookup_exchange_ndr', 'lookup_group_policy', 'lookup_http_status',
   'lookup_m365_sku', 'lookup_port_protocol', 'lookup_windows_error', 'lookup_windows_event',
   'list_killer_modules', 'list_killer_scripts',
-  'diff_text', 'format_json', 'minify_json', 'diff_json', 'convert_xml_json', 'format_xml', 'calculate_nd_exposure', 'calculate_exposure_equivalence',
+  'diff_text', 'format_json', 'minify_json', 'diff_json', 'convert_xml_json', 'format_xml',
+  'convert_json', 'convert_yaml', 'convert_toml', 'format_yaml', 'calculate_nd_exposure', 'calculate_exposure_equivalence',
   'calculate_depth_of_field', 'generate_svg_placeholder', 'calculate_chmod',
   'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv',
   'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers',
@@ -128,6 +129,10 @@ const xmlJson = await request('tools/call', { name: 'convert_xml_json', argument
 assert.match(JSON.parse(xmlJson.content[0].text).text, /"_attributes"/);
 const formattedXml = await request('tools/call', { name: 'format_xml', arguments: { text: '<a><b>text</b></a>' } });
 assert.equal(JSON.parse(formattedXml.content[0].text).text, '<a>\n  <b>text</b>\n</a>');
+const yamlJson = await request('tools/call', { name: 'convert_yaml', arguments: { text: 'a: 1', to: 'json' } });
+assert.equal(JSON.parse(yamlJson.content[0].text).text, '{\n  "a": 1\n}');
+const formattedYaml = await request('tools/call', { name: 'format_yaml', arguments: { text: 'b: 2\na: 1', sortKeys: true } });
+assert.equal(JSON.parse(formattedYaml.content[0].text).text, 'a: 1\nb: 2\n');
 const subnet = await request('tools/call', { name: 'calculate_ipv4_subnet', arguments: { address: '198.51.100.27/24' } });
 assert.equal(JSON.parse(subnet.content[0].text).cidr, '198.51.100.0/24');
 const spf = await request('tools/call', { name: 'generate_spf_record', arguments: { providers: ['include:_spf.google.com'], ipAddresses: ['198.51.100.7'], enforcement: '-all' } });

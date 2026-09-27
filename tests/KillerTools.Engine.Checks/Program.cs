@@ -22,6 +22,7 @@ var checks = new (string Name, Action Run)[]
     ("URL and CSV conversions", CheckUrlAndCsv),
     ("JSON5 formatting and diff", CheckStructuredJson),
     ("XML and JSON conversion", CheckXmlJson),
+    ("YAML and TOML conversion", CheckYamlToml),
     ("email records", CheckEmailRecords),
     ("email headers", CheckEmailHeaders),
     ("safe regular expressions", CheckSafeRegex),
@@ -186,6 +187,15 @@ static void CheckXmlJson()
     Equal("{\n  \"a\": {\n    \"_attributes\": {\n      \"x\": \"1\"\n    }\n  }\n}", XmlJsonConverter.XmlToJson("<a x=\"1\"/>"));
     Equal("<root>\n  <item id=\"1\">one</item>\n  <item>two</item>\n</root>", XmlJsonConverter.JsonToXml("{root:{item:[{_attributes:{id:'1'},_text:'one'},{_text:'two'}]}}"));
     Throws<System.Xml.XmlException>(() => XmlJsonConverter.XmlToJson("<root><"));
+}
+
+static void CheckYamlToml()
+{
+    Equal("{\n  \"a\": 1\n}", StructuredTextConverter.YamlToJson("a: 1"));
+    Equal("{\n  \"a\": 1\n}", StructuredTextConverter.TomlToJson("a = 1"));
+    Equal("a: 1\n", StructuredTextConverter.JsonToYaml("{a:1}"));
+    Equal("a = 1", StructuredTextConverter.JsonToToml("{a:1}"));
+    Equal("a: 1\nb: 2\n", StructuredTextConverter.FormatYaml("b: 2\na: 1", 2, true));
 }
 
 static void CheckNetworkCalculations()

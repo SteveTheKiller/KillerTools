@@ -104,6 +104,10 @@ static class ToolRegistry
         Tool("diff_json", "Compare two JSON5-compatible documents.", new { left = StructuredTextSchema(), right = StructuredTextSchema(), onlyDifferences = BooleanSchema(true) }, ["left", "right"]),
         Tool("convert_xml_json", "Convert XML to JSON or JSON5-compatible text to XML using KillerTools.", new { text = StructuredTextSchema(), direction = EnumSchema("xml_to_json", "json_to_xml") }, ["text", "direction"]),
         Tool("format_xml", "Format XML using KillerTools XML Formatter.", new { text = StructuredTextSchema(), indentSize = new { type = "integer", minimum = 0, maximum = 10, @default = 2 }, collapseContent = BooleanSchema(true) }, ["text"]),
+        Tool("convert_json", "Convert JSON5-compatible text to YAML or TOML using KillerTools.", new { text = StructuredTextSchema(), to = EnumSchema("yaml", "toml") }, ["text", "to"]),
+        Tool("convert_yaml", "Convert YAML text to JSON or TOML using KillerTools.", new { text = StructuredTextSchema(), to = EnumSchema("json", "toml") }, ["text", "to"]),
+        Tool("convert_toml", "Convert TOML text to JSON or YAML using KillerTools.", new { text = StructuredTextSchema(), to = EnumSchema("json", "yaml") }, ["text", "to"]),
+        Tool("format_yaml", "Prettify YAML with optional key sorting using KillerTools YAML Viewer.", new { text = StructuredTextSchema(), indentSize = new { type = "integer", minimum = 1, maximum = 10, @default = 2 }, sortKeys = BooleanSchema(false) }, ["text"]),
         Tool("calculate_nd_exposure", "Calculate exposure time with a neutral density filter.", new { baseSeconds = NumberSchema(), stops = NumberSchema() }, ["baseSeconds", "stops"]),
         Tool("calculate_exposure_equivalence", "Calculate equivalent shutter speed after an aperture change.", new { shutterSeconds = NumberSchema(), originalAperture = NumberSchema(), targetAperture = NumberSchema() }, ["shutterSeconds", "originalAperture", "targetAperture"]),
         Tool("calculate_depth_of_field", "Calculate depth of field.", new { focalLengthMm = NumberSchema(), aperture = NumberSchema(), focusDistance = NumberSchema(), focusUnit = EnumSchema("m", "ft"), circleOfConfusionMm = NumberSchema() }, ["focalLengthMm", "aperture", "focusDistance", "focusUnit", "circleOfConfusionMm"]),
@@ -191,6 +195,10 @@ static class ToolRegistry
             "diff_json" => JsonDifference(arguments),
             "convert_xml_json" => XmlJson(arguments),
             "format_xml" => XmlFormat(arguments),
+            "convert_json" => StructuredConvert(arguments, "json"),
+            "convert_yaml" => StructuredConvert(arguments, "yaml"),
+            "convert_toml" => StructuredConvert(arguments, "toml"),
+            "format_yaml" => YamlFormat(arguments),
             "calculate_nd_exposure" => new { seconds = ExposureCalculators.WithNeutralDensity(arguments.GetProperty("baseSeconds").GetDouble(), arguments.GetProperty("stops").GetDouble()) },
             "calculate_exposure_equivalence" => new { shutterSeconds = ExposureCalculators.EquivalentShutter(arguments.GetProperty("shutterSeconds").GetDouble(), arguments.GetProperty("originalAperture").GetDouble(), arguments.GetProperty("targetAperture").GetDouble()) },
             "calculate_depth_of_field" => ExposureCalculators.DepthOfField(arguments.GetProperty("focalLengthMm").GetDouble(), arguments.GetProperty("aperture").GetDouble(), arguments.GetProperty("focusDistance").GetDouble(), arguments.GetProperty("focusUnit").GetString()!, arguments.GetProperty("circleOfConfusionMm").GetDouble()),
@@ -362,6 +370,39 @@ static class ToolRegistry
         {
             throw new ToolCallException("Invalid document input");
         }
+    }
+    private static object StructuredConvert(JsonElement arguments, string from)
+    {
+        try
+        {
+            var text = arguments.GetProperty("text").GetString()!;
+            var to = arguments.GetProperty("to").GetString();
+            var converted = (from, to) switch
+            {
+                ("json", "yaml") => StructuredTextConverter.JsonToYaml(text),
+                ("json", "toml") => StructuredTextConverter.JsonToToml(text),
+                ("yaml", "json") => StructuredTextConverter.YamlToJson(text),
+                ("yaml", "toml") => StructuredTextConverter.YamlToToml(text),
+                ("toml", "json") => StructuredTextConverter.TomlToJson(text),
+                ("toml", "yaml") => StructuredTextConverter.TomlToYaml(text),
+                _ => throw new FormatException(),
+            };
+            if (converted.Length > 16_384) throw new ToolCallException("Output is too large");
+            return new { text = converted };
+        }
+        catch (ToolCallException) { throw; }
+        catch (Exception) { throw new ToolCallException("Invalid structured text"); }
+    }
+    private static object YamlFormat(JsonElement arguments)
+    {
+        try
+        {
+            var text = StructuredTextConverter.FormatYaml(arguments.GetProperty("text").GetString()!, OptionalInteger(arguments, "indentSize", 2), OptionalBoolean(arguments, "sortKeys"));
+            if (text.Length > 16_384) throw new ToolCallException("Output is too large");
+            return new { text };
+        }
+        catch (ToolCallException) { throw; }
+        catch (Exception) { throw new ToolCallException("Invalid structured text"); }
     }
     private static object KillerScripts(JsonElement arguments)
     {
