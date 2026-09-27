@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Cross-platform utility engine shared by KillerTools and KillerMCP.</Description>
+  </PropertyGroup>
+</Project>
+
