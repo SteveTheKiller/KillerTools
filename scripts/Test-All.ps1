@@ -32,6 +32,8 @@ try {
     node scripts\Test-NativeHost.mjs
     if ($LASTEXITCODE -ne 0) { throw 'Native KillerMCP host check failed.' }
 
+    & scripts\Test-NativePackage.ps1
+
     Push-Location $site
     try {
         pnpm -C mcp build:local
