@@ -6,6 +6,7 @@ using KillerTools.Engine.SystemTools;
 using KillerTools.Engine.Photography;
 using KillerTools.Engine.Network;
 using KillerTools.Engine.Reference;
+using KillerTools.Engine.Security;
 
 var checks = new (string Name, Action Run)[]
 {
@@ -28,6 +29,7 @@ var checks = new (string Name, Action Run)[]
     ("reference translations", CheckReferenceTranslations),
     ("portable utilities", CheckPortableUtilities),
     ("bounded Base64 files", CheckBase64Files),
+    ("one-time passwords", CheckOtp),
 };
 
 foreach (var check in checks)
@@ -177,6 +179,18 @@ static void CheckBase64Files()
     {
         Directory.Delete(directory, true);
     }
+}
+
+static void CheckOtp()
+{
+    const string secret = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
+    Equal("755224", OtpTools.GenerateCode(secret, 0));
+    Equal(true, OtpTools.VerifyCode(secret, 0, "755224"));
+    Equal(false, OtpTools.VerifyCode(secret, 0, "000000"));
+    var generated = OtpTools.GenerateSecret("Killer Tools", "user@example.com");
+    Equal(16, generated.Secret.Length);
+    Equal(true, generated.Secret.All(character => "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".Contains(character)));
+    Equal(true, generated.Uri.StartsWith("otpauth://totp/Killer%20Tools:user%40example.com?issuer=Killer%20Tools&secret=", StringComparison.Ordinal));
 }
 
 static void CheckHtmlAndDiff()

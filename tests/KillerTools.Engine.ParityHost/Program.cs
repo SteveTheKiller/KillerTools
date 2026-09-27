@@ -8,6 +8,7 @@ using KillerTools.Engine.SystemTools;
 using KillerTools.Engine.Photography;
 using KillerTools.Engine.Network;
 using KillerTools.Engine.Reference;
+using KillerTools.Engine.Security;
 
 Console.InputEncoding = Encoding.UTF8;
 Console.OutputEncoding = Encoding.UTF8;
@@ -60,6 +61,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "lookup_windows_error" => MicrosoftReferenceResult(operation, arguments),
         "lookup_windows_event" => MicrosoftReferenceResult(operation, arguments),
         "encode_file_base64_local" => EncodedFileResult(arguments),
+        "otp_private" => OtpResult(arguments),
         _ => throw new InvalidOperationException($"Unknown parity operation: {operation}"),
     });
 }
@@ -74,6 +76,17 @@ static object EncodedFileResult(JsonElement arguments)
 {
     var value = Base64Files.Encode(arguments.GetProperty("path").GetString()!);
     return new { base64 = value.Base64, byteLength = value.ByteLength };
+}
+
+static object OtpResult(JsonElement arguments)
+{
+    var secret = arguments.GetProperty("secret").GetString()!;
+    var counter = arguments.GetProperty("counter").GetInt64();
+    if (arguments.TryGetProperty("code", out var code))
+    {
+        return new { matches = OtpTools.VerifyCode(secret, counter, code.GetString()!) };
+    }
+    return new { code = OtpTools.GenerateCode(secret, counter), counter };
 }
 
 static object MicrosoftReferenceResult(string operation, JsonElement arguments)

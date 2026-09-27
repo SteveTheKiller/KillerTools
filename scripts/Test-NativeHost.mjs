@@ -43,6 +43,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers',
   'test_regex',
   'encode_file_base64_local', 'decode_file_base64_local',
+  'otp_private', 'generate_otp_secret_private',
 ]);
 const called = await request('tools/call', { name: 'text_statistics', arguments: { text: 'hello world' } });
 assert.deepEqual(JSON.parse(called.content[0].text), { characterCount: 11, wordCount: 2, lineCount: 1, byteSize: 11 });
@@ -79,5 +80,11 @@ try {
 } finally {
   await rm(directory, { recursive: true, force: true });
 }
+const hotp = await request('tools/call', { name: 'otp_private', arguments: { secret: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', mode: 'hotp', counter: 0 } });
+assert.deepEqual(JSON.parse(hotp.content[0].text), { code: '755224', counter: 0 });
+const otpSecret = await request('tools/call', { name: 'generate_otp_secret_private', arguments: { issuer: 'Killer Tools', account: 'user@example.com' } });
+const generatedOtp = JSON.parse(otpSecret.content[0].text);
+assert.match(generatedOtp.secret, /^[A-Z2-7]{16}$/);
+assert.match(generatedOtp.uri, /^otpauth:\/\/totp\/Killer%20Tools:user%40example\.com\?/);
 child.stdin.end();
 console.log('Native KillerMCP stdio handshake, tool listing, and tool call passed.');
