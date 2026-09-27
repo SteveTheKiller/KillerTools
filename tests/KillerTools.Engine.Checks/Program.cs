@@ -3,6 +3,7 @@ using KillerTools.Engine.Numbers;
 using KillerTools.Engine.Text;
 using KillerTools.Engine.Documents;
 using KillerTools.Engine.SystemTools;
+using KillerTools.Engine.Photography;
 
 var checks = new (string Name, Action Run)[]
 {
@@ -24,6 +25,9 @@ static void CheckPortableUtilities()
     Equal(0d, Temperatures.Convert(32, "fahrenheit")["celsius"]);
     Equal("754", UnixPermissions.Calculate(new UnixPermissionSet(new(true, true, true), new(true, false, true), new(true, false, false))).Octal);
     Equal(true, SvgPlaceholder.Build(10, 20, 8, "#fff", "#000", true, "A&B").Contains("A&amp;B", StringComparison.Ordinal));
+    Equal(8d, ExposureCalculators.WithNeutralDensity(1, 3));
+    Equal(4d, ExposureCalculators.EquivalentShutter(1, 4, 8));
+    Equal(true, ExposureCalculators.DepthOfField(50, 8, 3, "m", 0.03).NearMeters > 0);
 }
 
 static void CheckTextConversions()

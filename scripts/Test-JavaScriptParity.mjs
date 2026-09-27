@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -44,20 +44,64 @@ const requests = [
   { operation: 'convert_temperature', arguments: { value: -40, scale: 'celsius' } },
   { operation: 'calculate_chmod', arguments: { permissions: { owner: { read: true, write: true, execute: true }, group: { read: true, write: false, execute: true }, public: { read: true, write: false, execute: false } } } },
   { operation: 'generate_svg_placeholder', arguments: { width: 320, height: 180, fontSize: 26, bgColor: '#cccccc', fgColor: '#333333', useExactSize: true, customText: 'A&B' } },
+  { operation: 'calculate_nd_exposure', arguments: { baseSeconds: 0.5, stops: 6 } },
+  { operation: 'calculate_exposure_equivalence', arguments: { shutterSeconds: 0.25, originalAperture: 4, targetAperture: 11 } },
+  { operation: 'calculate_depth_of_field', arguments: { focalLengthMm: 50, aperture: 8, focusDistance: 3, focusUnit: 'm', circleOfConfusionMm: 0.03 } },
 ];
 
-const expected = requests.map(({ operation, arguments: input }) => {
-  if (operation === 'text_statistics') {
-    return statistics.getTextStatistics(input.text);
+const oracleOperations = new Set(['calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field']);
+const oracle = spawn(process.execPath, [resolve(site, 'mcp/dist/killermcp.mjs')], { cwd: resolve(site, 'mcp'), stdio: ['pipe', 'pipe', 'pipe'] });
+let oracleBuffer = '';
+let oracleError = '';
+let nextId = 1;
+const pending = new Map();
+oracle.stderr.on('data', chunk => oracleError += chunk);
+oracle.stdout.on('data', (chunk) => {
+  oracleBuffer += chunk;
+  while (oracleBuffer.includes('\n')) {
+    const newline = oracleBuffer.indexOf('\n');
+    const line = oracleBuffer.slice(0, newline);
+    oracleBuffer = oracleBuffer.slice(newline + 1);
+    if (!line.trim()) continue;
+    const message = JSON.parse(line);
+    pending.get(message.id)?.(message);
+    pending.delete(message.id);
   }
-  if (operation === 'encode_base64') return { encoded: base64.textToBase64(input.text, { makeUrlSafe: input.urlSafe }) };
-  if (operation === 'decode_base64') return { text: base64.base64ToText(input.encoded, { makeUrlSafe: input.urlSafe }) };
-  if (operation === 'text_to_ascii_binary') return { binary: binary.convertTextToAsciiBinary(input.text) };
-  if (operation === 'ascii_binary_to_text') return { text: binary.convertAsciiBinaryToText(input.binary) };
-  if (operation === 'arabic_to_roman') return { roman: roman.arabicToRoman(input.number) };
-  if (operation === 'roman_to_arabic') return { number: roman.romanToArabic(input.roman) };
-  if (operation === 'text_to_nato_alphabet') return { nato: nato.textToNatoAlphabet({ text: input.text }).split(' ').filter(Boolean).join(' ') };
-  if (operation === 'convert_integer_base') return { value: integerBase.convertBase(input) };
+});
+function oracleRequest(method, params = {}) {
+  const id = nextId++;
+  return new Promise((resolveRequest, reject) => {
+    const timeout = setTimeout(() => { pending.delete(id); reject(new Error(`MCP oracle timed out: ${oracleError}`)); }, 30000);
+    pending.set(id, (message) => { clearTimeout(timeout); resolveRequest(message); });
+    oracle.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id, method, params })}\n`);
+  });
+}
+async function oracleCall(name, args) {
+  const response = await oracleRequest('tools/call', { name, arguments: args });
+  assert.ok(response.result && !response.result.isError, JSON.stringify(response));
+  return JSON.parse(response.result.content[0].text);
+}
+
+await oracleRequest('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'native-parity', version: '0.1.0' } });
+oracle.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' })}\n`);
+
+const expected = [];
+for (const { operation, arguments: input } of requests) {
+  if (oracleOperations.has(operation)) {
+    expected.push(await oracleCall(operation, input));
+    continue;
+  }
+  if (operation === 'text_statistics') {
+    expected.push(statistics.getTextStatistics(input.text)); continue;
+  }
+  if (operation === 'encode_base64') { expected.push({ encoded: base64.textToBase64(input.text, { makeUrlSafe: input.urlSafe }) }); continue; }
+  if (operation === 'decode_base64') { expected.push({ text: base64.base64ToText(input.encoded, { makeUrlSafe: input.urlSafe }) }); continue; }
+  if (operation === 'text_to_ascii_binary') { expected.push({ binary: binary.convertTextToAsciiBinary(input.text) }); continue; }
+  if (operation === 'ascii_binary_to_text') { expected.push({ text: binary.convertAsciiBinaryToText(input.binary) }); continue; }
+  if (operation === 'arabic_to_roman') { expected.push({ roman: roman.arabicToRoman(input.number) }); continue; }
+  if (operation === 'roman_to_arabic') { expected.push({ number: roman.romanToArabic(input.roman) }); continue; }
+  if (operation === 'text_to_nato_alphabet') { expected.push({ nato: nato.textToNatoAlphabet({ text: input.text }).split(' ').filter(Boolean).join(' ') }); continue; }
+  if (operation === 'convert_integer_base') { expected.push({ value: integerBase.convertBase(input) }); continue; }
   if (operation === 'convert_temperature') {
     const pairs = {
       kelvin: [value => value, value => value], celsius: [temperatures.convertCelsiusToKelvin, temperatures.convertKelvinToCelsius],
@@ -66,23 +110,25 @@ const expected = requests.map(({ operation, arguments: input }) => {
       reaumur: [temperatures.convertReaumurToKelvin, temperatures.convertKelvinToReaumur], romer: [temperatures.convertRomerToKelvin, temperatures.convertKelvinToRomer],
     };
     const kelvin = pairs[input.scale][0](input.value);
-    return Object.fromEntries(Object.entries(pairs).map(([scale, pair]) => [scale, scale === input.scale ? input.value : Math.floor(pair[1](kelvin) * 100) / 100]));
+    expected.push(Object.fromEntries(Object.entries(pairs).map(([scale, pair]) => [scale, scale === input.scale ? input.value : Math.floor(pair[1](kelvin) * 100) / 100]))); continue;
   }
   if (operation === 'calculate_chmod') {
     const octal = chmod.computeChmodOctalRepresentation(input);
-    return { octal, symbolic: chmod.computeChmodSymbolicRepresentation(input), command: `chmod ${octal} path` };
+    expected.push({ octal, symbolic: chmod.computeChmodSymbolicRepresentation(input), command: `chmod ${octal} path` }); continue;
   }
   if (operation === 'generate_svg_placeholder') {
     const value = svg.buildSvgPlaceholder(input);
-    return { svg: value, dataUrl: `data:image/svg+xml;base64,${base64.textToBase64(value)}` };
+    expected.push({ svg: value, dataUrl: `data:image/svg+xml;base64,${base64.textToBase64(value)}` }); continue;
   }
   const value = input.mode === 'percent_of'
     ? percentages.percentageOf(input.x, input.y)
     : input.mode === 'what_percent'
       ? percentages.percentageRatio(input.x, input.y)
       : percentages.percentageChange(input.x, input.y);
-  return { value };
-});
+  expected.push({ value });
+}
+oracle.stdin.end();
+oracle.kill();
 
 const run = spawnSync('dotnet', [
   'run',
@@ -96,4 +142,4 @@ if (run.status !== 0) {
 }
 
 assert.deepEqual(JSON.parse(run.stdout), expected);
-console.log(`${requests.length} live JavaScript parity cases passed for 13 native operations.`);
+console.log(`${requests.length} live JavaScript parity cases passed for 16 native operations.`);

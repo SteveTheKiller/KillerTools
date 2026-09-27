@@ -5,6 +5,7 @@ using KillerTools.Engine.Numbers;
 using KillerTools.Engine.Text;
 using KillerTools.Engine.Documents;
 using KillerTools.Engine.SystemTools;
+using KillerTools.Engine.Photography;
 
 Console.InputEncoding = Encoding.UTF8;
 Console.OutputEncoding = Encoding.UTF8;
@@ -31,8 +32,17 @@ foreach (var request in input.RootElement.EnumerateArray())
         "convert_temperature" => Temperatures.Convert(arguments.GetProperty("value").GetDouble(), arguments.GetProperty("scale").GetString()!),
         "calculate_chmod" => ChmodResult(arguments),
         "generate_svg_placeholder" => SvgResult(arguments),
+        "calculate_nd_exposure" => new { seconds = ExposureCalculators.WithNeutralDensity(arguments.GetProperty("baseSeconds").GetDouble(), arguments.GetProperty("stops").GetDouble()) },
+        "calculate_exposure_equivalence" => new { shutterSeconds = ExposureCalculators.EquivalentShutter(arguments.GetProperty("shutterSeconds").GetDouble(), arguments.GetProperty("originalAperture").GetDouble(), arguments.GetProperty("targetAperture").GetDouble()) },
+        "calculate_depth_of_field" => DepthOfFieldResult(arguments),
         _ => throw new InvalidOperationException($"Unknown parity operation: {operation}"),
     });
+}
+
+static object DepthOfFieldResult(JsonElement arguments)
+{
+    var value = ExposureCalculators.DepthOfField(arguments.GetProperty("focalLengthMm").GetDouble(), arguments.GetProperty("aperture").GetDouble(), arguments.GetProperty("focusDistance").GetDouble(), arguments.GetProperty("focusUnit").GetString()!, arguments.GetProperty("circleOfConfusionMm").GetDouble());
+    return new { hyperfocalMeters = value.HyperfocalMeters, nearMeters = value.NearMeters, farMeters = value.FarMeters, depthOfFieldMeters = value.DepthOfFieldMeters };
 }
 
 static object ChmodResult(JsonElement arguments)
