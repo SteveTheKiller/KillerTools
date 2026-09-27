@@ -72,7 +72,14 @@ static void CheckGroupPolicyLookup()
 
 static void CheckReferenceTranslations()
 {
-    Equal(18, ReferenceTranslations.SupportedLocales.Count);
+    string[] expectedLocales = ["bn", "cs", "de", "es", "fr", "hu", "it", "ja", "kk", "no", "pl", "pt", "ru", "tr", "uk", "vi", "zh", "zh-TW"];
+    Equal(true, expectedLocales.SequenceEqual(ReferenceTranslations.SupportedLocales));
+    foreach (var locale in expectedLocales)
+    {
+        ReferenceTranslations.Translate("http-status-codes", locale, "Not Found");
+        ReferenceTranslations.Translate("group-policy-reference", locale, "Minimum Password Length");
+    }
+
     Equal("Non trouvé", ReferenceTranslations.Translate("http-status-codes", "fr", "Not Found"));
     Equal("Xác thực SPF không thành công", ReferenceTranslations.Translate("exchange-ndr-lookup", "vi", "SPF Validation Failed"));
     Equal("Failed Logon", ReferenceTranslations.Translate("windows-event-lookup", "en", "Failed Logon"));
