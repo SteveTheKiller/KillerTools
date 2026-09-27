@@ -79,6 +79,8 @@ foreach (var request in input.RootElement.EnumerateArray())
         "generate_uuids" => new { ids = IdentifierGenerators.GenerateUuids(arguments.GetProperty("version").GetString()!, arguments.GetProperty("count").GetInt32(), arguments.TryGetProperty("name", out var name) ? name.GetString() : null, arguments.TryGetProperty("namespace", out var namespaceValue) ? namespaceValue.GetString() : null) },
         "generate_lorem_ipsum" => new { text = LoremIpsum.Generate(arguments.GetProperty("paragraphCount").GetInt32(), arguments.GetProperty("sentencePerParagraph").GetInt32(), arguments.GetProperty("wordCount").GetInt32(), arguments.GetProperty("startWithLoremIpsum").GetBoolean(), arguments.GetProperty("asHTML").GetBoolean()) },
         "parse_jwt_private" => JwtResult(arguments),
+        "hash_text_private" => new { hash = TextHashes.Hash(arguments.GetProperty("value").GetString()!, arguments.GetProperty("algorithm").GetString()!, arguments.GetProperty("encoding").GetString()!) },
+        "hmac_private" => new { hmac = TextHashes.Hmac(arguments.GetProperty("value").GetString()!, arguments.GetProperty("secret").GetString()!, arguments.GetProperty("algorithm").GetString()!, arguments.GetProperty("encoding").GetString()!) },
         "analyze_password_private" => PasswordStrengthResult(arguments),
         "evaluate_math" => new { value = BoundedMath.Evaluate(arguments.GetProperty("expression").GetString()!) },
         "list_film_stocks" => FilmReciprocity.List().Select(stock => new { id = stock.Id, name = stock.Name, manufacturer = stock.Manufacturer, iso = stock.Iso, type = stock.Type }),

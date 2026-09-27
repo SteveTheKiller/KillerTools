@@ -36,6 +36,8 @@
   "generate_otp_secret_private": "verified",
   "generate_ulids": "verified",
   "generate_uuids": "verified",
+  "hash_text_private": "verified",
+  "hmac_private": "verified",
   "generate_rsa_keypair_private": "verified",
   "generate_dmarc_record": "verified",
   "generate_spf_record": "verified",
