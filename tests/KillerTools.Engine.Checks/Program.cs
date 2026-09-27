@@ -11,6 +11,7 @@ var checks = new (string Name, Action Run)[]
     ("Unicode entities", CheckUnicodeEntities),
     ("percentages", CheckPercentages),
     ("text conversions", CheckTextConversions),
+    ("HTML entities and text diff", CheckHtmlAndDiff),
     ("portable utilities", CheckPortableUtilities),
 };
 
@@ -28,6 +29,20 @@ static void CheckPortableUtilities()
     Equal(8d, ExposureCalculators.WithNeutralDensity(1, 3));
     Equal(4d, ExposureCalculators.EquivalentShutter(1, 4, 8));
     Equal(true, ExposureCalculators.DepthOfField(50, 8, 3, "m", 0.03).NearMeters > 0);
+}
+
+static void CheckHtmlAndDiff()
+{
+    Equal("&lt;a title=&quot;x&quot;&gt;Tom &amp; Jerry&#39;s&lt;/a&gt;", HtmlEntities.Escape("<a title=\"x\">Tom & Jerry's</a>"));
+    Equal("<a title=\"x\">Tom & Jerry's</a>", HtmlEntities.Unescape("&lt;a title=&quot;x&quot;&gt;Tom &amp; Jerry&#39;s&lt;/a&gt;"));
+
+    var difference = TextDiff.Compare("one\ntwo\nthree", "one\nnew\nthree");
+    Equal(false, difference.Equal);
+    Equal(1, difference.Added);
+    Equal(1, difference.Removed);
+    Equal(new TextDiffLine("context", "one"), difference.Lines[0]);
+    Equal(new TextDiffLine("add", "new"), difference.Lines[1]);
+    Equal(new TextDiffLine("remove", "two"), difference.Lines[2]);
 }
 
 static void CheckTextConversions()

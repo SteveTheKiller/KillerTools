@@ -8,11 +8,14 @@
   "calculate_nd_exposure": "verified",
   "convert_temperature": "verified",
   "decode_base64": "verified",
+  "diff_text": "verified",
   "encode_base64": "verified",
+  "escape_html_entities": "verified",
   "generate_svg_placeholder": "verified",
   "convert_integer_base": "verified",
   "roman_to_arabic": "verified",
   "text_to_ascii_binary": "verified",
   "text_to_nato_alphabet": "verified",
-  "text_statistics": "verified"
+  "text_statistics": "verified",
+  "unescape_html_entities": "verified"
 }

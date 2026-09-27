@@ -47,9 +47,14 @@ const requests = [
   { operation: 'calculate_nd_exposure', arguments: { baseSeconds: 0.5, stops: 6 } },
   { operation: 'calculate_exposure_equivalence', arguments: { shutterSeconds: 0.25, originalAperture: 4, targetAperture: 11 } },
   { operation: 'calculate_depth_of_field', arguments: { focalLengthMm: 50, aperture: 8, focusDistance: 3, focusUnit: 'm', circleOfConfusionMm: 0.03 } },
+  { operation: 'escape_html_entities', arguments: { text: `<a title="x">Tom & Jerry's</a>` } },
+  { operation: 'unescape_html_entities', arguments: { text: '&lt;a title=&quot;x&quot;&gt;Tom &amp; Jerry&#39;s&lt;/a&gt;' } },
+  { operation: 'diff_text', arguments: { left: 'one\ntwo\nthree', right: 'one\nnew\nthree' } },
+  { operation: 'diff_text', arguments: { left: 'same\n', right: 'same\n' } },
+  { operation: 'diff_text', arguments: { left: '', right: 'added' } },
 ];
 
-const oracleOperations = new Set(['calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field']);
+const oracleOperations = new Set(['calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text']);
 const oracle = spawn(process.execPath, [resolve(site, 'mcp/dist/killermcp.mjs')], { cwd: resolve(site, 'mcp'), stdio: ['pipe', 'pipe', 'pipe'] });
 let oracleBuffer = '';
 let oracleError = '';
@@ -142,4 +147,4 @@ if (run.status !== 0) {
 }
 
 assert.deepEqual(JSON.parse(run.stdout), expected);
-console.log(`${requests.length} live JavaScript parity cases passed for 16 native operations.`);
+console.log(`${requests.length} live JavaScript parity cases passed for 19 native operations.`);
