@@ -47,8 +47,15 @@ foreach (var request in input.RootElement.EnumerateArray())
         "generate_spf_record" => SpfResult(arguments),
         "generate_dmarc_record" => DmarcResult(arguments),
         "parse_email_headers" => EmailHeadersResult(arguments),
+        "test_regex" => RegexResult(arguments),
         _ => throw new InvalidOperationException($"Unknown parity operation: {operation}"),
     });
+}
+
+static object RegexResult(JsonElement arguments)
+{
+    var value = SafeRegex.Test(arguments.GetProperty("pattern").GetString()!, arguments.GetProperty("text").GetString()!, arguments.GetProperty("global").GetBoolean(), arguments.GetProperty("ignoreCase").GetBoolean(), arguments.GetProperty("multiline").GetBoolean(), arguments.GetProperty("dotAll").GetBoolean());
+    return new { matches = value.Matches.Select(match => new { index = match.Index, match = match.Match, groups = match.Groups }), truncated = value.Truncated, syntax = value.Syntax };
 }
 
 static object EmailHeadersResult(JsonElement arguments)

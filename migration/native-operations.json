@@ -25,5 +25,6 @@
   "text_to_ascii_binary": "verified",
   "text_to_nato_alphabet": "verified",
   "text_statistics": "verified",
+  "test_regex": "verified",
   "unescape_html_entities": "verified"
 }

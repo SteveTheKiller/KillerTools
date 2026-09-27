@@ -17,6 +17,7 @@ var checks = new (string Name, Action Run)[]
     ("URL and CSV conversions", CheckUrlAndCsv),
     ("email records", CheckEmailRecords),
     ("email headers", CheckEmailHeaders),
+    ("safe regular expressions", CheckSafeRegex),
     ("portable utilities", CheckPortableUtilities),
 };
 
@@ -24,6 +25,14 @@ foreach (var check in checks)
 {
     check.Run();
     Console.WriteLine($"PASS {check.Name}");
+}
+
+static void CheckSafeRegex()
+{
+    var result = SafeRegex.Test("(cat)|(dog)", "Cat dog cat", true, true, false, true);
+    Equal(3, result.Matches.Count);
+    Equal("Cat", result.Matches[0].Match);
+    Equal(null, result.Matches[0].Groups[1]);
 }
 
 static void CheckEmailHeaders()
