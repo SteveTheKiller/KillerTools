@@ -20,6 +20,7 @@ var checks = new (string Name, Action Run)[]
     ("date time conversions", CheckDateTimeConversions),
     ("HTML entities and text diff", CheckHtmlAndDiff),
     ("IP network calculations", CheckNetworkCalculations),
+    ("DNS lookup", CheckDnsLookup),
     ("URL and CSV conversions", CheckUrlAndCsv),
     ("JSON5 formatting and diff", CheckStructuredJson),
     ("XML and JSON conversion", CheckXmlJson),
@@ -229,6 +230,16 @@ static void CheckNetworkCalculations()
     Equal(254L, subnet.UsableHosts);
 
     Equal("fd5b:9179:b4b9::/48", Ipv6Ula.Generate("00:11:22:33:44:55", 1700000000000).Ula48);
+}
+
+static void CheckDnsLookup()
+{
+    const string response = "{\"Status\":0,\"Answer\":[{\"name\":\"example.com.\",\"type\":1,\"TTL\":300,\"data\":\"192.0.2.1\"}]}";
+    using var client = new HttpClient(new StaticHttpHandler(response));
+    var result = DomainDnsLookup.LookupAsync("EXAMPLE.COM", "A", client).GetAwaiter().GetResult();
+    Equal(0, result.Status);
+    Equal(new DnsAnswer("example.com.", 1, 300, "192.0.2.1"), result.Answers.Single());
+    Throws<FormatException>(() => DomainDnsLookup.LookupAsync("not a domain", "A", client).GetAwaiter().GetResult());
 }
 
 static void CheckPortableUtilities()

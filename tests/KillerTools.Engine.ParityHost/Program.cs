@@ -60,6 +60,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "describe_cron" => new { description = CronDescriptions.Describe(arguments.GetProperty("expression").GetString()!, arguments.GetProperty("use24HourTimeFormat").GetBoolean(), arguments.GetProperty("dayOfWeekStartIndexZero").GetBoolean()) },
         "json_to_csv" => new { csv = JsonCsv.Convert(arguments.GetProperty("rows")) },
         "parse_url" => UrlResult(arguments),
+        "lookup_domain_dns" => DnsResult(arguments),
         "generate_spf_record" => SpfResult(arguments),
         "generate_dmarc_record" => DmarcResult(arguments),
         "parse_email_headers" => EmailHeadersResult(arguments),
@@ -259,6 +260,12 @@ static object UrlResult(JsonElement arguments)
 {
     var value = UrlParser.Parse(arguments.GetProperty("url").GetString()!);
     return new { protocol = value.Protocol, hostname = value.Hostname, port = value.Port, username = value.Username, password = value.Password, pathname = value.Pathname, search = value.Search, hash = value.Hash, searchParams = value.SearchParams };
+}
+
+static object DnsResult(JsonElement arguments)
+{
+    var result = DomainDnsLookup.LookupAsync(arguments.GetProperty("name").GetString()!, arguments.GetProperty("type").GetString()!).GetAwaiter().GetResult();
+    return new { status = result.Status, answers = result.Answers.Select(answer => new { name = answer.Name, type = answer.Type, ttl = answer.Ttl, data = answer.Data }) };
 }
 
 static object Ipv4RangeResult(JsonElement arguments)

@@ -121,6 +121,7 @@ static class ToolRegistry
         Tool("generate_ipv6_ula", "Generate IPv6 unique local address ranges from a MAC address.", new { macAddress = new { type = "string", pattern = "^([0-9a-f]{2}:){5}[0-9a-f]{2}$" }, timestampMs = new { type = "integer", minimum = 0L, maximum = 8_640_000_000_000_000L } }, ["macAddress"]),
         Tool("json_to_csv", "Convert an array of JSON objects to CSV.", new { rows = new { type = "array", minItems = 1, maxItems = 100, items = new { type = "object" } } }, ["rows"]),
         Tool("parse_url", "Parse a URL into its parts and query parameters.", new { url = StringSchema() }, ["url"]),
+        Tool("lookup_domain_dns", "Query DNS records through Cloudflare DNS, as used by KillerTools Domain Lookup.", new { name = new { type = "string", minLength = 4, maxLength = 253 }, type = EnumSchema("A", "AAAA", "MX", "TXT", "CNAME", "NS", "CAA", "SRV") }, ["name"]),
         Tool("generate_spf_record", "Build an SPF TXT record.", new { providers = StringArraySchema(15), ipAddresses = StringArraySchema(20), enforcement = EnumSchema("-all", "~all", "?all") }, []),
         Tool("generate_dmarc_record", "Build a DMARC TXT record.", new { policy = EnumSchema("reject", "quarantine", "none"), subdomainPolicy = EnumSchema("reject", "quarantine", "none", ""), percentage = new { type = "integer", minimum = 0, maximum = 100, @default = 100 }, ruaEmails = StringArraySchema(5), rufEmails = StringArraySchema(5), adkim = EnumSchema("", "s"), aspf = EnumSchema("", "s") }, []),
         Tool("parse_email_headers", "Parse message headers, delivery hops, authentication results, and spam signals.", new { headers = new { type = "string", minLength = 1, maxLength = 16_384 } }, ["headers"]),
@@ -217,6 +218,7 @@ static class ToolRegistry
             "generate_ipv6_ula" => Ipv6Ula.Generate(arguments.GetProperty("macAddress").GetString()!, arguments.TryGetProperty("timestampMs", out var timestamp) ? timestamp.GetInt64() : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()),
             "json_to_csv" => new { csv = JsonCsv.Convert(arguments.GetProperty("rows")) },
             "parse_url" => UrlParser.Parse(arguments.GetProperty("url").GetString()!),
+            "lookup_domain_dns" => DnsLookup(arguments),
             "generate_spf_record" => new { record = EmailRecords.BuildSpf(StringArray(arguments, "providers"), StringArray(arguments, "ipAddresses"), OptionalString(arguments, "enforcement", "-all")) },
             "generate_dmarc_record" => new { record = EmailRecords.BuildDmarc(OptionalString(arguments, "policy", "reject"), OptionalString(arguments, "subdomainPolicy", ""), OptionalInteger(arguments, "percentage", 100), StringArray(arguments, "ruaEmails"), StringArray(arguments, "rufEmails"), OptionalString(arguments, "adkim", ""), OptionalString(arguments, "aspf", "")) },
             "parse_email_headers" => EmailHeaderParser.Parse(arguments.GetProperty("headers").GetString()!),
@@ -460,6 +462,15 @@ static class ToolRegistry
         }
         catch (ToolCallException) { throw; }
         catch (Exception) { throw new ToolCallException("Invalid bcrypt input"); }
+    }
+    private static object DnsLookup(JsonElement arguments)
+    {
+        try
+        {
+            var result = DomainDnsLookup.LookupAsync(arguments.GetProperty("name").GetString()!, OptionalString(arguments, "type", "A")).GetAwaiter().GetResult();
+            return new { status = result.Status, answers = result.Answers.Select(answer => new { name = answer.Name, type = answer.Type, ttl = answer.Ttl, data = answer.Data }) };
+        }
+        catch (Exception) { throw new ToolCallException("DNS lookup is unavailable"); }
     }
     private static object KillerScripts(JsonElement arguments)
     {

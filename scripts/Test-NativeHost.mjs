@@ -75,7 +75,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'convert_json', 'convert_yaml', 'convert_toml', 'format_yaml', 'generate_meta_tags', 'describe_cron', 'calculate_nd_exposure', 'calculate_exposure_equivalence',
   'calculate_depth_of_field', 'generate_svg_placeholder', 'calculate_chmod',
   'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv',
-  'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers',
+  'parse_url', 'lookup_domain_dns', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers',
   'test_regex',
   'encode_file_base64_local', 'decode_file_base64_local',
   'otp_private', 'generate_otp_secret_private',
