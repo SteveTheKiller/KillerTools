@@ -9,7 +9,6 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Web.Script.Serialization;
-using System.Windows.Forms;
 
 namespace KillerMCP.Setup
 {
@@ -41,7 +40,7 @@ namespace KillerMCP.Setup
             {
                 if (uninstall)
                 {
-                    if (!silent && MessageBox.Show("Remove KillerMCP and its agent connections?", "KillerMCP Setup", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return 0;
+                    if (!silent && !SetupDialog.ConfirmUninstall()) return 0;
                     Uninstall(destination, removeRegistration: true);
                     RemoveInstalledApp(destination);
                     return 0;
@@ -57,7 +56,7 @@ namespace KillerMCP.Setup
             catch (Exception exception)
             {
                 if (silent) Console.Error.WriteLine("KillerMCP setup failed: " + exception.Message);
-                else MessageBox.Show(exception.Message, "KillerMCP Setup", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                else SetupDialog.ShowFailure(exception.Message);
                 return 1;
             }
         }
