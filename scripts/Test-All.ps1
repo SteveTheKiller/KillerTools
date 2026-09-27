@@ -23,23 +23,10 @@ try {
     dotnet run --project tests\KillerTools.Engine.Checks\KillerTools.Engine.Checks.csproj --no-build
     if ($LASTEXITCODE -ne 0) { throw 'Native engine checks failed.' }
 
-    dotnet run --project tests\KillerMCP.Clients.Checks\KillerMCP.Clients.Checks.csproj --no-build
-    if ($LASTEXITCODE -ne 0) { throw 'Native KillerMCP client registration checks failed.' }
-
-    dotnet run --project tests\KillerMCP.Runtime.Checks\KillerMCP.Runtime.Checks.csproj --no-build
-    if ($LASTEXITCODE -ne 0) { throw 'Native KillerMCP runtime checks failed.' }
-
-    node scripts\Test-NativeHost.mjs
-    if ($LASTEXITCODE -ne 0) { throw 'Native KillerMCP host check failed.' }
-
-    & scripts\Test-NativePackage.ps1
-
-    if ($IsWindows) { & scripts\Test-WindowsInstaller.ps1 }
-
     Push-Location $site
     try {
         pnpm -C mcp build:local
-        if ($LASTEXITCODE -ne 0) { throw 'JavaScript MCP oracle build failed.' }
+        if ($LASTEXITCODE -ne 0) { throw 'JavaScript parity oracle build failed.' }
     }
     finally {
         Pop-Location

@@ -1,8 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>Cross-platform utility engine shared by KillerTools and KillerMCP.</Description>
+    <Version>0.2.0</Version>
+    <PackageId>KillerTools.Engine</PackageId>
+    <Authors>Steve the Killer</Authors>
+    <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/SteveTheKiller/KillerTools</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/SteveTheKiller/KillerTools</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     <EmbeddedResource Include="Data\*" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageReference Include="CronExpressionDescriptor" Version="2.51.0" />
