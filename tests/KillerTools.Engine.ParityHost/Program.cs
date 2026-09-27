@@ -66,6 +66,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "parse_user_agent" => UserAgentParser.Parse(arguments.GetProperty("userAgent").GetString()!),
         "lookup_domain_dns" => DnsResult(arguments),
         "lookup_domain_rdap" => RdapResult(arguments),
+        "lookup_cve" => CveLookup.LookupAsync(arguments.GetProperty("query").GetString()!).GetAwaiter().GetResult(),
         "generate_spf_record" => SpfResult(arguments),
         "generate_dmarc_record" => DmarcResult(arguments),
         "parse_email_headers" => EmailHeadersResult(arguments),

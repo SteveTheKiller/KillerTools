@@ -79,7 +79,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'describe_cron', 'calculate_nd_exposure', 'calculate_exposure_equivalence',
   'calculate_depth_of_field', 'generate_svg_placeholder', 'generate_qr_code', 'calculate_chmod',
   'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv',
-  'parse_url', 'parse_user_agent', 'lookup_domain_dns', 'lookup_domain_rdap', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers',
+  'parse_url', 'parse_user_agent', 'lookup_domain_dns', 'lookup_domain_rdap', 'lookup_cve', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers',
   'test_regex',
   'encode_file_base64_local', 'decode_file_base64_local',
   'otp_private', 'generate_otp_secret_private',
@@ -143,6 +143,8 @@ assert.match(qrCode.svg, /^<svg/);
 assert.match(qrCode.svg, /width="256"/);
 const wifiQr = await request('tools/call', { name: 'generate_qr_code', arguments: { mode: 'wifi', wifi: { ssid: 'Example', password: 'secret', encryption: 'WPA' } } });
 assert.equal(wifiQr.isError, undefined);
+const cve = JSON.parse((await request('tools/call', { name: 'lookup_cve', arguments: { query: 'CVE-2021-44228' } })).content[0].text);
+assert.equal(cve.results[0].id, 'CVE-2021-44228');
 const xmlJson = await request('tools/call', { name: 'convert_xml_json', arguments: { text: '<a x="1"/>', direction: 'xml_to_json' } });
 assert.match(JSON.parse(xmlJson.content[0].text).text, /"_attributes"/);
 const formattedXml = await request('tools/call', { name: 'format_xml', arguments: { text: '<a><b>text</b></a>' } });

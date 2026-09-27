@@ -23,6 +23,7 @@ var checks = new (string Name, Action Run)[]
     ("IP network calculations", CheckNetworkCalculations),
     ("DNS lookup", CheckDnsLookup),
     ("RDAP lookup", CheckRdapLookup),
+    ("CVE lookup", CheckCveLookup),
     ("URL and CSV conversions", CheckUrlAndCsv),
     ("user agent parsing", CheckUserAgentParsing),
     ("QR code generation", CheckQrCodes),
@@ -295,6 +296,19 @@ static void CheckRdapLookup()
     Equal(new RdapEvent("registration", "1995-08-14T04:00:00Z"), result.Events.Single());
     Equal("A.IANA-SERVERS.NET", result.Nameservers.Single());
     Equal(true, result.DnssecSigned);
+}
+
+static void CheckCveLookup()
+{
+    const string response = "{\"totalResults\":1,\"vulnerabilities\":[{\"cve\":{\"id\":\"CVE-2025-53770\",\"published\":\"2025-07-19T00:00:00Z\",\"lastModified\":\"2025-07-20T00:00:00Z\",\"descriptions\":[{\"lang\":\"en\",\"value\":\"SharePoint vulnerability\"}],\"metrics\":{\"cvssMetricV31\":[{\"cvssData\":{\"baseScore\":9.8,\"baseSeverity\":\"CRITICAL\",\"vectorString\":\"CVSS:3.1/AV:N\"}}]},\"cisaExploitAdd\":\"2025-07-20\"}}]}";
+    using var client = new HttpClient(new StaticHttpHandler(response));
+    var result = CveLookup.LookupAsync("CVE-2025-53770", client).GetAwaiter().GetResult();
+    Equal(1, result.TotalResults);
+    Equal("CVE-2025-53770", result.Results.Single().Id);
+    Equal("CRITICAL", result.Results.Single().Severity);
+    Equal(true, result.Results.Single().CisaExploited);
+    Equal("ToolShell", result.Results.Single().Chains.Single().Name);
+    Equal("CVE-2025-53771", result.Results.Single().Chains.Single().OtherCves.Single());
 }
 
 static void CheckPortableUtilities()

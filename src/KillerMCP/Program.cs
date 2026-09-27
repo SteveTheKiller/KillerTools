@@ -137,6 +137,7 @@ static class ToolRegistry
         Tool("parse_user_agent", "Parse a user agent string using KillerTools.", new { userAgent = new { type = "string", minLength = 1, maxLength = 1024 } }, ["userAgent"]),
         Tool("lookup_domain_dns", "Query DNS records through Cloudflare DNS, as used by KillerTools Domain Lookup.", new { name = new { type = "string", minLength = 4, maxLength = 253 }, type = EnumSchema("A", "AAAA", "MX", "TXT", "CNAME", "NS", "CAA", "SRV") }, ["name"]),
         Tool("lookup_domain_rdap", "Look up public domain registration details through RDAP, as used by KillerTools Domain Lookup.", new { domain = new { type = "string", minLength = 4, maxLength = 253 } }, ["domain"]),
+        Tool("lookup_cve", "Look up a CVE ID or search terms through the same NVD proxy used by KillerTools. Returns bounded vulnerability summaries and named multi-CVE exploit chains.", new { query = new { type = "string", minLength = 2, maxLength = 80 } }, ["query"]),
         Tool("generate_spf_record", "Build an SPF TXT record.", new { providers = StringArraySchema(15), ipAddresses = StringArraySchema(20), enforcement = EnumSchema("-all", "~all", "?all") }, []),
         Tool("generate_dmarc_record", "Build a DMARC TXT record.", new { policy = EnumSchema("reject", "quarantine", "none"), subdomainPolicy = EnumSchema("reject", "quarantine", "none", ""), percentage = new { type = "integer", minimum = 0, maximum = 100, @default = 100 }, ruaEmails = StringArraySchema(5), rufEmails = StringArraySchema(5), adkim = EnumSchema("", "s"), aspf = EnumSchema("", "s") }, []),
         Tool("parse_email_headers", "Parse message headers, delivery hops, authentication results, and spam signals.", new { headers = new { type = "string", minLength = 1, maxLength = 16_384 } }, ["headers"]),
@@ -250,6 +251,7 @@ static class ToolRegistry
             "parse_user_agent" => UserAgentParser.Parse(arguments.GetProperty("userAgent").GetString()!),
             "lookup_domain_dns" => DnsLookup(arguments),
             "lookup_domain_rdap" => RdapLookup(arguments),
+            "lookup_cve" => Cve(arguments),
             "generate_spf_record" => new { record = EmailRecords.BuildSpf(StringArray(arguments, "providers"), StringArray(arguments, "ipAddresses"), OptionalString(arguments, "enforcement", "-all")) },
             "generate_dmarc_record" => new { record = EmailRecords.BuildDmarc(OptionalString(arguments, "policy", "reject"), OptionalString(arguments, "subdomainPolicy", ""), OptionalInteger(arguments, "percentage", 100), StringArray(arguments, "ruaEmails"), StringArray(arguments, "rufEmails"), OptionalString(arguments, "adkim", ""), OptionalString(arguments, "aspf", "")) },
             "parse_email_headers" => EmailHeaderParser.Parse(arguments.GetProperty("headers").GetString()!),
@@ -617,6 +619,11 @@ static class ToolRegistry
             return new { domain = result.Domain, handle = result.Handle, status = result.Status, events = result.Events.Select(value => new { eventAction = value.EventAction, eventDate = value.EventDate }), nameservers = result.Nameservers, dnssecSigned = result.DnssecSigned };
         }
         catch (Exception) { throw new ToolCallException("RDAP lookup is unavailable for this domain"); }
+    }
+    private static object Cve(JsonElement arguments)
+    {
+        try { return CveLookup.LookupAsync(arguments.GetProperty("query").GetString()!).GetAwaiter().GetResult(); }
+        catch { throw new ToolCallException("CVE lookup is unavailable"); }
     }
     private static object KillerScripts(JsonElement arguments)
     {

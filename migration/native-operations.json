@@ -52,6 +52,7 @@
   "lookup_exchange_ndr": "verified",
   "lookup_domain_dns": "verified",
   "lookup_domain_rdap": "verified",
+  "lookup_cve": "verified",
   "markdown_to_html": "verified",
   "search_gifs": "verified",
   "get_browser_camera_local": "verified",
