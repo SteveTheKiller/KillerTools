@@ -61,6 +61,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "json_to_csv" => new { csv = JsonCsv.Convert(arguments.GetProperty("rows")) },
         "parse_url" => UrlResult(arguments),
         "lookup_domain_dns" => DnsResult(arguments),
+        "lookup_domain_rdap" => RdapResult(arguments),
         "generate_spf_record" => SpfResult(arguments),
         "generate_dmarc_record" => DmarcResult(arguments),
         "parse_email_headers" => EmailHeadersResult(arguments),
@@ -266,6 +267,12 @@ static object DnsResult(JsonElement arguments)
 {
     var result = DomainDnsLookup.LookupAsync(arguments.GetProperty("name").GetString()!, arguments.GetProperty("type").GetString()!).GetAwaiter().GetResult();
     return new { status = result.Status, answers = result.Answers.Select(answer => new { name = answer.Name, type = answer.Type, ttl = answer.Ttl, data = answer.Data }) };
+}
+
+static object RdapResult(JsonElement arguments)
+{
+    var result = DomainRdapLookup.LookupAsync(arguments.GetProperty("domain").GetString()!).GetAwaiter().GetResult();
+    return new { domain = result.Domain, handle = result.Handle, status = result.Status, events = result.Events.Select(value => new { eventAction = value.EventAction, eventDate = value.EventDate }), nameservers = result.Nameservers, dnssecSigned = result.DnssecSigned };
 }
 
 static object Ipv4RangeResult(JsonElement arguments)

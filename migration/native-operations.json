@@ -50,6 +50,7 @@
   "lookup_group_policy": "verified",
   "lookup_exchange_ndr": "verified",
   "lookup_domain_dns": "verified",
+  "lookup_domain_rdap": "verified",
   "lookup_m365_sku": "verified",
   "lookup_port_protocol": "verified",
   "lookup_windows_error": "verified",

@@ -21,6 +21,7 @@ var checks = new (string Name, Action Run)[]
     ("HTML entities and text diff", CheckHtmlAndDiff),
     ("IP network calculations", CheckNetworkCalculations),
     ("DNS lookup", CheckDnsLookup),
+    ("RDAP lookup", CheckRdapLookup),
     ("URL and CSV conversions", CheckUrlAndCsv),
     ("JSON5 formatting and diff", CheckStructuredJson),
     ("XML and JSON conversion", CheckXmlJson),
@@ -242,6 +243,20 @@ static void CheckDnsLookup()
     Throws<FormatException>(() => DomainDnsLookup.LookupAsync("not a domain", "A", client).GetAwaiter().GetResult());
 }
 
+static void CheckRdapLookup()
+{
+    const string bootstrap = "{\"services\":[[[\"com\"],[\"https://rdap.example.net/\"]]]}";
+    const string response = "{\"ldhName\":\"EXAMPLE.COM\",\"handle\":\"2336799_DOMAIN_COM-VRSN\",\"status\":[\"client delete prohibited\"],\"events\":[{\"eventAction\":\"registration\",\"eventDate\":\"1995-08-14T04:00:00Z\"}],\"nameservers\":[{\"ldhName\":\"A.IANA-SERVERS.NET\"}],\"secureDNS\":{\"delegationSigned\":true}}";
+    using var client = new HttpClient(new RoutedHttpHandler(bootstrap, response));
+    var result = DomainRdapLookup.LookupAsync("Example.COM", client).GetAwaiter().GetResult();
+    Equal("EXAMPLE.COM", result.Domain);
+    Equal("2336799_DOMAIN_COM-VRSN", result.Handle);
+    Equal("client delete prohibited", result.Status.Single());
+    Equal(new RdapEvent("registration", "1995-08-14T04:00:00Z"), result.Events.Single());
+    Equal("A.IANA-SERVERS.NET", result.Nameservers.Single());
+    Equal(true, result.DnssecSigned);
+}
+
 static void CheckPortableUtilities()
 {
     Equal(0d, Temperatures.Convert(32, "fahrenheit")["celsius"]);
@@ -461,5 +476,13 @@ sealed class StaticHttpHandler(string content) : HttpMessageHandler
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
     {
         Content = new StringContent(content),
+    });
+}
+
+sealed class RoutedHttpHandler(string bootstrap, string lookup) : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+    {
+        Content = new StringContent(request.RequestUri?.Host == "data.iana.org" ? bootstrap : lookup),
     });
 }
