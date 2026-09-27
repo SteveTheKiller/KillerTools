@@ -213,16 +213,13 @@ namespace KillerMCP.Setup
             string setup = SetupCopyPath(destination);
             using (RegistryKey? key = Registry.CurrentUser.OpenSubKey(RegistryPath(destination)))
             {
-                if (key == null)
-                {
-                    if (File.Exists(setup) && !IsLegacySetup(destination, setup)) throw new InvalidOperationException("An unregistered KillerMCP setup file already exists.");
-                    return;
-                }
-                if (!File.Exists(setup) || !string.Equals(key.GetValue("SetupSha256") as string, Sha256(setup), StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("The installed KillerMCP setup file or uninstall entry has changed.");
+                if (!File.Exists(setup)) { if (key != null) throw new InvalidOperationException("The installed KillerMCP setup file is missing."); return; }
+                if (key != null && string.Equals(key.GetValue("SetupSha256") as string, Sha256(setup), StringComparison.OrdinalIgnoreCase)) return;
+                if (!IsRecoverableSetup(destination, setup, key)) throw new InvalidOperationException(key == null ? "An unregistered KillerMCP setup file already exists." : "The installed KillerMCP setup file or uninstall entry has changed.");
             }
         }
 
-        private static bool IsLegacySetup(string destination, string setup)
+        private static bool IsRecoverableSetup(string destination, string setup, RegistryKey? key)
         {
             try
             {
@@ -230,7 +227,16 @@ namespace KillerMCP.Setup
                 Dictionary<string, ManifestFile> files = manifest.files!;
                 bool legacy = files.ContainsKey("node.exe") && files.ContainsKey("killermcp.mjs") && files.ContainsKey("killertools.mjs");
                 FileVersionInfo information = FileVersionInfo.GetVersionInfo(setup);
-                return legacy && string.Equals(information.ProductName, "KillerMCP-Setup", StringComparison.Ordinal);
+                if (!string.Equals(information.ProductName, "KillerMCP-Setup", StringComparison.Ordinal)) return false;
+                if (key == null) return legacy;
+                return Path.GetFullPath(key.GetValue("InstallLocation") as string ?? string.Empty).Equals(Path.GetFullPath(destination), StringComparison.OrdinalIgnoreCase)
+                    && Version.TryParse(key.GetValue("DisplayVersion") as string, out Version? registeredVersion)
+                    && Version.TryParse(CurrentVersion, out Version? currentVersion)
+                    && registeredVersion < currentVersion
+                    && Version.TryParse(information.FileVersion, out Version? setupVersion)
+                    && setupVersion.Major == currentVersion.Major
+                    && setupVersion.Minor == currentVersion.Minor
+                    && setupVersion.Build == currentVersion.Build;
             }
             catch { return false; }
         }

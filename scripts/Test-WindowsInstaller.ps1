@@ -66,6 +66,18 @@ try {
         node (Join-Path $PSScriptRoot 'Test-NativePackage.mjs') $installed
         if ($LASTEXITCODE -ne 0) { throw "Installed runtime check failed on pass $pass." }
         if (Test-Path -LiteralPath $legacyNode) { throw 'Installer did not remove the legacy Node runtime.' }
+        if ($pass -eq 1) {
+            New-ItemProperty -Path $uninstallKey -Name DisplayVersion -Value '0.1.0' -PropertyType String -Force | Out-Null
+            New-ItemProperty -Path $uninstallKey -Name SetupSha256 -Value 'STALE' -PropertyType String -Force | Out-Null
+            @{ transport = @{ type = 'stdio'; command = $legacyNode; args = @($legacyScript) } } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $codexState -Encoding utf8NoBOM
+            foreach ($name in $names) {
+                $path = [Environment]::GetEnvironmentVariable("KILLERMCP_TEST_${name}_CONFIG")
+                $configuration = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+                $configuration.mcpServers.killermcp.command = $legacyNode
+                $configuration.mcpServers.killermcp.args = @($legacyScript)
+                $configuration | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $path -Encoding utf8NoBOM
+            }
+        }
     }
 
     $entry = Get-ItemProperty -LiteralPath $uninstallKey
