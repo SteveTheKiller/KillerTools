@@ -4,6 +4,7 @@ using KillerTools.Engine.Text;
 using KillerTools.Engine.Documents;
 using KillerTools.Engine.SystemTools;
 using KillerTools.Engine.Photography;
+using KillerTools.Engine.Network;
 
 var checks = new (string Name, Action Run)[]
 {
@@ -12,6 +13,7 @@ var checks = new (string Name, Action Run)[]
     ("percentages", CheckPercentages),
     ("text conversions", CheckTextConversions),
     ("HTML entities and text diff", CheckHtmlAndDiff),
+    ("IP network calculations", CheckNetworkCalculations),
     ("portable utilities", CheckPortableUtilities),
 };
 
@@ -19,6 +21,20 @@ foreach (var check in checks)
 {
     check.Run();
     Console.WriteLine($"PASS {check.Name}");
+}
+
+static void CheckNetworkCalculations()
+{
+    var range = Ipv4Tools.CoverRange("192.168.1.1", "192.168.7.255");
+    Equal("192.168.0.0/21", range.NewCidr);
+    Equal(1791L, range.OldSize);
+
+    var subnet = Ipv4Tools.CalculateSubnet("192.168.1.25/24");
+    Equal("192.168.1.0/24", subnet.Cidr);
+    Equal("192.168.1.255", subnet.BroadcastAddress);
+    Equal(254L, subnet.UsableHosts);
+
+    Equal("fd5b:9179:b4b9::/48", Ipv6Ula.Generate("00:11:22:33:44:55", 1700000000000).Ula48);
 }
 
 static void CheckPortableUtilities()

@@ -52,9 +52,14 @@ const requests = [
   { operation: 'diff_text', arguments: { left: 'one\ntwo\nthree', right: 'one\nnew\nthree' } },
   { operation: 'diff_text', arguments: { left: 'same\n', right: 'same\n' } },
   { operation: 'diff_text', arguments: { left: '', right: 'added' } },
+  { operation: 'expand_ipv4_range', arguments: { startIp: '192.0.2.10', endIp: '192.0.2.70' } },
+  { operation: 'expand_ipv4_range', arguments: { startIp: '10.0.0.1', endIp: '10.0.0.17' } },
+  { operation: 'calculate_ipv4_subnet', arguments: { address: '198.51.100.27/24' } },
+  { operation: 'calculate_ipv4_subnet', arguments: { address: '203.0.113.4/31' } },
+  { operation: 'generate_ipv6_ula', arguments: { macAddress: '00:11:22:33:44:55', timestampMs: 1700000000000 } },
 ];
 
-const oracleOperations = new Set(['calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text']);
+const oracleOperations = new Set(['calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula']);
 const oracle = spawn(process.execPath, [resolve(site, 'mcp/dist/killermcp.mjs')], { cwd: resolve(site, 'mcp'), stdio: ['pipe', 'pipe', 'pipe'] });
 let oracleBuffer = '';
 let oracleError = '';
@@ -147,4 +152,4 @@ if (run.status !== 0) {
 }
 
 assert.deepEqual(JSON.parse(run.stdout), expected);
-console.log(`${requests.length} live JavaScript parity cases passed for 19 native operations.`);
+console.log(`${requests.length} live JavaScript parity cases passed for 22 native operations.`);

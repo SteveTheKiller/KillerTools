@@ -6,6 +6,7 @@ using KillerTools.Engine.Text;
 using KillerTools.Engine.Documents;
 using KillerTools.Engine.SystemTools;
 using KillerTools.Engine.Photography;
+using KillerTools.Engine.Network;
 
 Console.InputEncoding = Encoding.UTF8;
 Console.OutputEncoding = Encoding.UTF8;
@@ -38,8 +39,46 @@ foreach (var request in input.RootElement.EnumerateArray())
         "escape_html_entities" => new { text = HtmlEntities.Escape(arguments.GetProperty("text").GetString()!) },
         "unescape_html_entities" => new { text = HtmlEntities.Unescape(arguments.GetProperty("text").GetString()!) },
         "diff_text" => TextDiffResult(arguments),
+        "expand_ipv4_range" => Ipv4RangeResult(arguments),
+        "calculate_ipv4_subnet" => Ipv4SubnetResult(arguments),
+        "generate_ipv6_ula" => Ipv6UlaResult(arguments),
         _ => throw new InvalidOperationException($"Unknown parity operation: {operation}"),
     });
+}
+
+static object Ipv4RangeResult(JsonElement arguments)
+{
+    var value = Ipv4Tools.CoverRange(arguments.GetProperty("startIp").GetString()!, arguments.GetProperty("endIp").GetString()!);
+    return new { newEnd = value.NewEnd, newStart = value.NewStart, newCidr = value.NewCidr, newSize = value.NewSize, oldSize = value.OldSize };
+}
+
+static object Ipv4SubnetResult(JsonElement arguments)
+{
+    var value = Ipv4Tools.CalculateSubnet(arguments.GetProperty("address").GetString()!);
+    var result = new Dictionary<string, object>
+    {
+        ["cidr"] = value.Cidr,
+        ["networkAddress"] = value.NetworkAddress,
+        ["networkMask"] = value.NetworkMask,
+        ["prefixLength"] = value.PrefixLength,
+        ["wildcardMask"] = value.WildcardMask,
+        ["size"] = value.Size,
+        ["usableHosts"] = value.UsableHosts,
+        ["firstAddress"] = value.FirstAddress,
+        ["lastAddress"] = value.LastAddress,
+        ["ipClass"] = value.IpClass,
+    };
+    if (value.BroadcastAddress is not null)
+    {
+        result["broadcastAddress"] = value.BroadcastAddress;
+    }
+    return result;
+}
+
+static object Ipv6UlaResult(JsonElement arguments)
+{
+    var value = Ipv6Ula.Generate(arguments.GetProperty("macAddress").GetString()!, arguments.GetProperty("timestampMs").GetInt64());
+    return new { ula48 = value.Ula48, firstRoutable64 = value.FirstRoutable64, lastRoutable64 = value.LastRoutable64, timestampMs = value.TimestampMs };
 }
 
 static object DepthOfFieldResult(JsonElement arguments)
