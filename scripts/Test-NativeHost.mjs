@@ -61,6 +61,8 @@ const statuses = await request('tools/call', { name: 'lookup_http_status', argum
 assert.equal(JSON.parse(statuses.content[0].text)[0].code, 404);
 const policies = await request('tools/call', { name: 'lookup_group_policy', arguments: { query: 'minimum password length', limit: 1 } });
 assert.equal(JSON.parse(policies.content[0].text)[0].name, 'Minimum Password Length');
+const vietnameseNdr = await request('tools/call', { name: 'lookup_exchange_ndr', arguments: { query: 'SPF Validation Failed', limit: 1, locale: 'vi' } });
+assert.equal(JSON.parse(vietnameseNdr.content[0].text)[0].name, 'Xác thực SPF không thành công');
 const exposure = await request('tools/call', { name: 'calculate_nd_exposure', arguments: { baseSeconds: 0.5, stops: 6 } });
 assert.deepEqual(JSON.parse(exposure.content[0].text), { seconds: 32 });
 const difference = await request('tools/call', { name: 'diff_text', arguments: { left: 'one\ntwo', right: 'one\nnew' } });

@@ -42,6 +42,8 @@ while ((line = Console.ReadLine()) is not null)
 
 static class ToolRegistry
 {
+    private static readonly JsonSerializerOptions CamelCaseJson = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
     public static readonly object[] Tools =
     [
         Tool("text_statistics", "Count characters, words, lines, and UTF-8 bytes.", new { text = StringSchema() }, ["text"]),
@@ -118,13 +120,13 @@ static class ToolRegistry
             "escape_html_entities" => new { text = HtmlEntities.Escape(arguments.GetProperty("text").GetString()!) },
             "unescape_html_entities" => new { text = HtmlEntities.Unescape(arguments.GetProperty("text").GetString()!) },
             "convert_date_time" => DateTimeConverter.Convert(arguments.GetProperty("value").GetString()!, arguments.GetProperty("inputFormat").GetString()!),
-            "lookup_exchange_ndr" => MicrosoftReferenceLookups.SearchNdrs(Query(arguments), Limit(arguments)),
-            "lookup_group_policy" => GroupPolicyLookup.Search(Query(arguments), Limit(arguments)),
-            "lookup_http_status" => HttpStatusLookup.Search(Query(arguments), Limit(arguments)),
-            "lookup_m365_sku" => MicrosoftReferenceLookups.SearchSkus(Query(arguments), Limit(arguments)),
-            "lookup_port_protocol" => PortProtocolLookup.Search(Query(arguments), Limit(arguments)),
-            "lookup_windows_error" => MicrosoftReferenceLookups.SearchErrors(Query(arguments), Limit(arguments)),
-            "lookup_windows_event" => MicrosoftReferenceLookups.SearchEvents(Query(arguments), Limit(arguments)),
+            "lookup_exchange_ndr" => Localize("exchange-ndr-lookup", MicrosoftReferenceLookups.SearchNdrs(Query(arguments), Limit(arguments)), Locale(arguments)),
+            "lookup_group_policy" => Localize("group-policy-reference", GroupPolicyLookup.Search(Query(arguments), Limit(arguments)), Locale(arguments)),
+            "lookup_http_status" => Localize("http-status-codes", HttpStatusLookup.Search(Query(arguments), Limit(arguments)), Locale(arguments)),
+            "lookup_m365_sku" => Localize("m365-sku-decoder", MicrosoftReferenceLookups.SearchSkus(Query(arguments), Limit(arguments)), Locale(arguments)),
+            "lookup_port_protocol" => Localize("port-protocol-reference", PortProtocolLookup.Search(Query(arguments), Limit(arguments)), Locale(arguments)),
+            "lookup_windows_error" => Localize("windows-error-codes", MicrosoftReferenceLookups.SearchErrors(Query(arguments), Limit(arguments)), Locale(arguments)),
+            "lookup_windows_event" => Localize("windows-event-lookup", MicrosoftReferenceLookups.SearchEvents(Query(arguments), Limit(arguments)), Locale(arguments)),
             "diff_text" => TextDiff.Compare(arguments.GetProperty("left").GetString()!, arguments.GetProperty("right").GetString()!),
             "calculate_nd_exposure" => new { seconds = ExposureCalculators.WithNeutralDensity(arguments.GetProperty("baseSeconds").GetDouble(), arguments.GetProperty("stops").GetDouble()) },
             "calculate_exposure_equivalence" => new { shutterSeconds = ExposureCalculators.EquivalentShutter(arguments.GetProperty("shutterSeconds").GetDouble(), arguments.GetProperty("originalAperture").GetDouble(), arguments.GetProperty("targetAperture").GetDouble()) },
@@ -165,7 +167,7 @@ static class ToolRegistry
     private static object Tool(string name, string description, object properties, string[] required) =>
         new { name, description, inputSchema = new { type = "object", properties, required, additionalProperties = false } };
     private static object LookupTool(string name, string description) =>
-        Tool(name, description, new { query = StringSchema(), limit = new { type = "integer", minimum = 1, maximum = 20, @default = 10 } }, ["query"]);
+        Tool(name, description, new { query = StringSchema(), limit = new { type = "integer", minimum = 1, maximum = 20, @default = 10 }, locale = EnumSchema("en", "bn", "cs", "de", "es", "fr", "hu", "it", "ja", "kk", "no", "pl", "pt", "ru", "tr", "uk", "vi", "zh", "zh-TW") }, ["query"]);
     private static object StringSchema() => new { type = "string", maxLength = 4096 };
     private static object BooleanSchema(bool defaultValue) => new { type = "boolean", @default = defaultValue };
     private static object IntegerSchema(int minimum, int maximum) => new { type = "integer", minimum, maximum };
@@ -183,6 +185,29 @@ static class ToolRegistry
     private static string[] StringArray(JsonElement arguments, string name) => arguments.TryGetProperty(name, out var values) ? values.EnumerateArray().Select(value => value.GetString()!).ToArray() : [];
     private static string Query(JsonElement arguments) => arguments.GetProperty("query").GetString()!;
     private static int Limit(JsonElement arguments) => arguments.TryGetProperty("limit", out var value) ? value.GetInt32() : 10;
+    private static string Locale(JsonElement arguments) => OptionalString(arguments, "locale", "en");
+    private static object Localize<T>(string tool, IReadOnlyList<T> entries, string locale)
+    {
+        if (locale.Equals("en", StringComparison.OrdinalIgnoreCase))
+        {
+            return entries;
+        }
+
+        var source = JsonSerializer.SerializeToElement(entries, CamelCaseJson);
+        return TranslateElement(tool, locale, source)!;
+    }
+
+    private static object? TranslateElement(string tool, string locale, JsonElement element) => element.ValueKind switch
+    {
+        JsonValueKind.Object => element.EnumerateObject().ToDictionary(property => property.Name, property => TranslateElement(tool, locale, property.Value)),
+        JsonValueKind.Array => element.EnumerateArray().Select(item => TranslateElement(tool, locale, item)).ToArray(),
+        JsonValueKind.String => ReferenceTranslations.Translate(tool, locale, element.GetString()!),
+        JsonValueKind.Number => element.TryGetInt64(out var integer) ? integer : element.GetDouble(),
+        JsonValueKind.True => true,
+        JsonValueKind.False => false,
+        JsonValueKind.Null => null,
+        _ => element.GetRawText(),
+    };
     private static object Percentage(JsonElement arguments)
     {
         var x = arguments.GetProperty("x").GetDouble();
