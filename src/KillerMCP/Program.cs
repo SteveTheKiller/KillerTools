@@ -3,6 +3,8 @@ using System.Text.Json;
 using KillerTools.Engine.Text;
 using KillerTools.Engine.Math;
 using KillerTools.Engine.Numbers;
+using KillerTools.Engine.Reference;
+using KillerTools.Engine.SystemTools;
 
 Console.InputEncoding = Encoding.UTF8;
 Console.OutputEncoding = Encoding.UTF8;
@@ -52,6 +54,14 @@ static class ToolRegistry
         Tool("calculate_percentage", "Calculate percentages and percentage changes.", new { mode = EnumSchema("percent_of", "what_percent", "change"), x = NumberSchema(), y = NumberSchema() }, ["mode", "x", "y"]),
         Tool("escape_html_entities", "Escape HTML entities.", new { text = StringSchema() }, ["text"]),
         Tool("unescape_html_entities", "Unescape HTML entities.", new { text = StringSchema() }, ["text"]),
+        Tool("convert_date_time", "Convert a date among KillerTools formats.", new { value = StringSchema(), inputFormat = EnumSchema("iso8601", "iso9075", "rfc3339", "rfc7231", "unix_seconds", "timestamp_ms", "utc", "mongo_object_id", "excel") }, ["value", "inputFormat"]),
+        LookupTool("lookup_exchange_ndr", "Search the Exchange non-delivery report reference."),
+        LookupTool("lookup_group_policy", "Search the Group Policy reference."),
+        LookupTool("lookup_http_status", "Search the HTTP status code reference."),
+        LookupTool("lookup_m365_sku", "Search the Microsoft 365 SKU reference."),
+        LookupTool("lookup_port_protocol", "Search the port and protocol reference."),
+        LookupTool("lookup_windows_error", "Search the Windows error code reference."),
+        LookupTool("lookup_windows_event", "Search the Windows Event ID reference."),
     ];
 
     public static object Call(JsonElement parameters, JsonSerializerOptions json)
@@ -74,6 +84,14 @@ static class ToolRegistry
             "calculate_percentage" => Percentage(arguments),
             "escape_html_entities" => new { text = HtmlEntities.Escape(arguments.GetProperty("text").GetString()!) },
             "unescape_html_entities" => new { text = HtmlEntities.Unescape(arguments.GetProperty("text").GetString()!) },
+            "convert_date_time" => DateTimeConverter.Convert(arguments.GetProperty("value").GetString()!, arguments.GetProperty("inputFormat").GetString()!),
+            "lookup_exchange_ndr" => MicrosoftReferenceLookups.SearchNdrs(Query(arguments), Limit(arguments)),
+            "lookup_group_policy" => GroupPolicyLookup.Search(Query(arguments), Limit(arguments)),
+            "lookup_http_status" => HttpStatusLookup.Search(Query(arguments), Limit(arguments)),
+            "lookup_m365_sku" => MicrosoftReferenceLookups.SearchSkus(Query(arguments), Limit(arguments)),
+            "lookup_port_protocol" => PortProtocolLookup.Search(Query(arguments), Limit(arguments)),
+            "lookup_windows_error" => MicrosoftReferenceLookups.SearchErrors(Query(arguments), Limit(arguments)),
+            "lookup_windows_event" => MicrosoftReferenceLookups.SearchEvents(Query(arguments), Limit(arguments)),
             _ => throw new InvalidOperationException($"Unknown tool: {name}"),
         };
         return new { content = new[] { new { type = "text", text = JsonSerializer.Serialize(value, json) } } };
@@ -81,12 +99,16 @@ static class ToolRegistry
 
     private static object Tool(string name, string description, object properties, string[] required) =>
         new { name, description, inputSchema = new { type = "object", properties, required, additionalProperties = false } };
+    private static object LookupTool(string name, string description) =>
+        Tool(name, description, new { query = StringSchema(), limit = new { type = "integer", minimum = 1, maximum = 20, @default = 10 } }, ["query"]);
     private static object StringSchema() => new { type = "string", maxLength = 4096 };
     private static object BooleanSchema(bool defaultValue) => new { type = "boolean", @default = defaultValue };
     private static object IntegerSchema(int minimum, int maximum) => new { type = "integer", minimum, maximum };
     private static object NumberSchema() => new { type = "number" };
     private static object EnumSchema(params string[] values) => new { type = "string", @enum = values };
     private static bool OptionalBoolean(JsonElement arguments, string name) => arguments.TryGetProperty(name, out var value) && value.GetBoolean();
+    private static string Query(JsonElement arguments) => arguments.GetProperty("query").GetString()!;
+    private static int Limit(JsonElement arguments) => arguments.TryGetProperty("limit", out var value) ? value.GetInt32() : 10;
     private static object Percentage(JsonElement arguments)
     {
         var x = arguments.GetProperty("x").GetDouble();
