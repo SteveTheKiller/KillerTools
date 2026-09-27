@@ -5,6 +5,7 @@
   "crypt_text_private": "verified",
   "ascii_binary_to_text": "verified",
   "calculate_percentage": "verified",
+  "check_pdf_signatures_local": "verified",
   "calculate_reciprocity": "verified",
   "calculate_film_development": "verified",
   "calculate_chmod": "verified",

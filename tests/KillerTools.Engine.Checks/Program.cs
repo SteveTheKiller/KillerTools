@@ -18,6 +18,7 @@ var checks = new (string Name, Action Run)[]
     ("FIGlet text", CheckAsciiArt),
     ("emoji search", CheckEmojiSearch),
     ("SQL formatting", CheckSqlFormatting),
+    ("PDF signature inspection", CheckPdfSignatures),
     ("case conversions", CheckCaseConversions),
     ("Lorem Ipsum generation", CheckLoremIpsum),
     ("date time conversions", CheckDateTimeConversions),
@@ -107,6 +108,18 @@ static void CheckSqlFormatting()
     Equal("   select a,\n          b\n     from t\n    where x = 1", SqlFormatter.Format("select a,b from t where x=1", "mysql", "preserve", "tabularRight", true));
     Throws<ArgumentException>(() => SqlFormatter.Format("select 1", "unknown"));
     Throws<ArgumentOutOfRangeException>(() => SqlFormatter.Format(new string('x', 4097)));
+}
+
+static void CheckPdfSignatures()
+{
+    Throws<InvalidDataException>(() => PdfSignatures.Inspect("%PDF-1.7\n%%EOF"u8.ToArray()));
+    var path = Path.Combine(Path.GetTempPath(), $"killertools-pdf-limit-{Guid.NewGuid():N}.pdf");
+    try
+    {
+        using (var stream = File.Create(path)) stream.SetLength(8_000_001);
+        Throws<InvalidDataException>(() => PdfSignatures.Inspect(path));
+    }
+    finally { File.Delete(path); }
 }
 
 static void CheckDateTimeConversions()

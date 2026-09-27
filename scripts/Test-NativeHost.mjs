@@ -4,12 +4,15 @@ import { createServer } from 'node:http';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { brotliDecompressSync } from 'node:zlib';
 
 const updateDirectory = await mkdtemp(join(tmpdir(), 'killermcp-update-'));
 const pdfSourceOne = join(updateDirectory, 'source-one.pdf');
 const pdfSourceTwo = join(updateDirectory, 'source-two.pdf');
+const signedPdf = join(updateDirectory, 'signed.pdf');
 await writeFile(pdfSourceOne, 'fixture one');
 await writeFile(pdfSourceTwo, 'fixture two');
+await writeFile(signedPdf, brotliDecompressSync(Buffer.from(await readFile(resolve('tests/KillerTools.Engine.ParityHost/Data/signed-pdf.br64'), 'utf8'), 'base64')));
 let updateRequests = 0;
 const updateServer = createServer((request, response) => {
   updateRequests++;
@@ -81,7 +84,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv',
   'parse_url', 'parse_user_agent', 'parse_phone_number', 'convert_color', 'lookup_mac_vendor', 'lookup_domain_dns', 'lookup_domain_rdap', 'lookup_cve', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers',
   'test_regex',
-  'encode_file_base64_local', 'decode_file_base64_local',
+  'encode_file_base64_local', 'decode_file_base64_local', 'check_pdf_signatures_local',
   'otp_private', 'generate_otp_secret_private',
   'generate_ulids', 'generate_uuids', 'generate_lorem_ipsum',
   'parse_jwt_private',
@@ -204,6 +207,9 @@ const spf = await request('tools/call', { name: 'generate_spf_record', arguments
 assert.deepEqual(JSON.parse(spf.content[0].text), { record: 'v=spf1 include:_spf.google.com ip4:198.51.100.7 -all' });
 const regex = await request('tools/call', { name: 'test_regex', arguments: { pattern: 'a+', text: 'caaab' } });
 assert.equal(JSON.parse(regex.content[0].text).matches.length, 1);
+const pdfSignatures = JSON.parse((await request('tools/call', { name: 'check_pdf_signatures_local', arguments: { path: signedPdf } })).content[0].text);
+assert.equal(pdfSignatures.signatures.length, 1);
+assert.equal(pdfSignatures.signatures[0].integrity, true);
 const directory = await mkdtemp(join(tmpdir(), 'killermcp-'));
 try {
   const source = join(directory, 'source.bin');

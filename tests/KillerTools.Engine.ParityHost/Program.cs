@@ -1,5 +1,7 @@
 using System.Text;
 using System.Text.Json;
+using System.IO.Compression;
+using System.Reflection;
 using KillerTools.Engine.Math;
 using KillerTools.Engine.Numbers;
 using KillerTools.Engine.Text;
@@ -23,6 +25,8 @@ foreach (var request in input.RootElement.EnumerateArray())
     var arguments = request.GetProperty("arguments");
     output.Add(operation switch
     {
+        "create_pdf_signature_fixture" => new { base64 = Convert.ToBase64String(CreatePdfSignatureFixture()) },
+        "check_pdf_signatures_local" => PdfSignatures.Inspect(arguments.GetProperty("path").GetString()!),
         "text_statistics" => TextStatisticsResult(arguments),
         "convert_case" => CaseConverter.Convert(arguments.GetProperty("text").GetString()!).Select(item => new { label = item.Label, value = item.Value }),
         "convert_date_time" => DateTimeResult(arguments),
@@ -424,7 +428,18 @@ static object QrResult(JsonElement arguments)
     return new { svg = QrCodes.GenerateSvg(value, arguments.GetProperty("foreground").GetString()!, arguments.GetProperty("background").GetString()!, arguments.GetProperty("errorCorrectionLevel").GetString()!) };
 }
 
-Console.Write(JsonSerializer.Serialize(output));
+Console.Write(JsonSerializer.Serialize(output, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+
+static byte[] CreatePdfSignatureFixture()
+{
+    using var resource = Assembly.GetExecutingAssembly().GetManifestResourceStream("KillerTools.Engine.ParityHost.Data.signed-pdf.br64") ?? throw new InvalidOperationException("Signed PDF fixture is missing");
+    using var reader = new StreamReader(resource);
+    using var compressed = new MemoryStream(Convert.FromBase64String(reader.ReadToEnd()));
+    using var brotli = new BrotliStream(compressed, CompressionMode.Decompress);
+    using var output = new MemoryStream();
+    brotli.CopyTo(output);
+    return output.ToArray();
+}
 
 static object TextStatisticsResult(JsonElement arguments)
 {

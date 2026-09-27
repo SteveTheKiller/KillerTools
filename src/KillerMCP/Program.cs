@@ -150,6 +150,7 @@ static class ToolRegistry
         Tool("test_regex", "Match text using safe RE2 syntax.", new { pattern = new { type = "string", minLength = 1, maxLength = 256 }, text = new { type = "string", maxLength = 4096 }, global = BooleanSchema(true), ignoreCase = BooleanSchema(false), multiline = BooleanSchema(false), dotAll = BooleanSchema(true) }, ["pattern", "text"]),
         Tool("encode_file_base64_local", "Read a local file and return a bounded Base64 representation.", new { path = new { type = "string", minLength = 1, maxLength = 1024 } }, ["path"]),
         Tool("decode_file_base64_local", "Decode Base64 to a new local file. Existing files are never overwritten.", new { path = new { type = "string", minLength = 1, maxLength = 1024 }, base64 = new { type = "string", minLength = 1, maxLength = 43_692 } }, ["path", "base64"]),
+        Tool("check_pdf_signatures_local", "Read a local PDF and return signatures found by the KillerTools PDF signature reader.", new { path = new { type = "string", minLength = 1, maxLength = 1024 } }, ["path"]),
         Tool("otp_private", "Generate or verify a six-digit HOTP or TOTP code locally.", new { secret = new { type = "string", minLength = 8, maxLength = 128 }, mode = EnumSchema("totp", "hotp"), counter = new { type = "integer", minimum = 0L, maximum = 9_007_199_254_740_991L }, timeStep = new { type = "integer", minimum = 15, maximum = 300, @default = 30 }, code = new { type = "string", pattern = "^\\d{6}$" } }, ["secret"]),
         Tool("generate_otp_secret_private", "Generate a random Base32 OTP secret and an otpauth URI locally.", new { issuer = new { type = "string", minLength = 1, maxLength = 128, @default = "killer-tools" }, account = new { type = "string", minLength = 1, maxLength = 128, @default = "demo-user" } }, []),
         Tool("generate_ulids", "Generate up to 100 ULIDs.", new { count = new { type = "integer", minimum = 1, maximum = 100, @default = 1 } }, []),
@@ -271,6 +272,7 @@ static class ToolRegistry
             "test_regex" => SafeRegex.Test(arguments.GetProperty("pattern").GetString()!, arguments.GetProperty("text").GetString()!, OptionalBoolean(arguments, "global", true), OptionalBoolean(arguments, "ignoreCase"), OptionalBoolean(arguments, "multiline"), OptionalBoolean(arguments, "dotAll", true)),
             "encode_file_base64_local" => EncodeFile(arguments),
             "decode_file_base64_local" => DecodeFile(arguments),
+            "check_pdf_signatures_local" => CheckPdfSignatures(arguments),
             "otp_private" => Otp(arguments),
             "generate_otp_secret_private" => OtpTools.GenerateSecret(OptionalString(arguments, "issuer", "killer-tools"), OptionalString(arguments, "account", "demo-user")),
             "generate_ulids" => new { ids = IdentifierGenerators.GenerateUlids(OptionalInteger(arguments, "count", 1)) },
@@ -781,6 +783,18 @@ static class ToolRegistry
         {
             throw new ToolCallException("Unable to write file. Choose a new path.");
         }
+    }
+    private static object CheckPdfSignatures(JsonElement arguments)
+    {
+        try
+        {
+            var result = PdfSignatures.Inspect(arguments.GetProperty("path").GetString()!);
+            if (JsonSerializer.Serialize(result, CamelCaseJson).Length > 65_536) throw new ToolCallException("Signature details exceed output limit");
+            return result;
+        }
+        catch (ToolCallException) { throw; }
+        catch (InvalidDataException exception) when (exception.Message == "PDF exceeds 8 MB limit") { throw new ToolCallException(exception.Message); }
+        catch (Exception) { throw new ToolCallException("Unable to inspect PDF signatures"); }
     }
     private static object Otp(JsonElement arguments)
     {

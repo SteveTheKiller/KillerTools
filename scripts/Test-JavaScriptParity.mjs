@@ -24,7 +24,13 @@ const svg = await import(pathToFileURL(resolve(site, 'src/tools/svg-placeholder-
 const caseConverter = await import(pathToFileURL(resolve(site, 'src/tools/case-converter/case-converter.models.ts')));
 const parityDirectory = await mkdtemp(join(tmpdir(), 'killertools-parity-'));
 const parityFile = join(parityDirectory, 'source.bin');
+const signedPdf = join(parityDirectory, 'signed.pdf');
 await writeFile(parityFile, Buffer.from([0, 1, 2, 254, 255]));
+const fixtureRun = spawnSync('dotnet', ['run', '--project', 'tests/KillerTools.Engine.ParityHost/KillerTools.Engine.ParityHost.csproj', '--no-build'], {
+  cwd: resolve(import.meta.dirname, '..'), input: '[{"operation":"create_pdf_signature_fixture","arguments":{}}]', encoding: 'utf8',
+});
+if (fixtureRun.status !== 0) throw new Error(fixtureRun.stderr || 'Unable to create signed PDF parity fixture');
+await writeFile(signedPdf, Buffer.from(JSON.parse(fixtureRun.stdout)[0].base64, 'base64'));
 
 const requests = [
   { operation: 'text_statistics', arguments: { text: '' } },
@@ -123,6 +129,7 @@ const requests = [
   { operation: 'markdown_to_html', arguments: { markdown: '# Hello\n\n- one\n- two with **bold**' } },
   { operation: 'markdown_to_html', arguments: { markdown: '[link](https://example.com)\n\n> quoted `code`' } },
   { operation: 'markdown_to_html', arguments: { markdown: '```csharp\nConsole.WriteLine("hi");\n```' } },
+  { operation: 'check_pdf_signatures_local', arguments: { path: signedPdf } },
   ...['bigquery', 'db2', 'hive', 'mariadb', 'mysql', 'n1ql', 'plsql', 'postgresql', 'redshift', 'spark', 'sql', 'sqlite', 'tsql'].flatMap(language => ['upper', 'lower', 'preserve'].flatMap(keywordCase => ['standard', 'tabularLeft', 'tabularRight'].flatMap(indentStyle => [false, true].map(useTabs => ({ operation: 'format_sql', arguments: { sql: 'select customer_id,count(*) as total from orders where created_at>=current_date group by customer_id order by total desc', language, keywordCase, indentStyle, useTabs } }))))),
   { operation: 'format_sql', arguments: { sql: 'SELECT a,b FROM sample WHERE a=1 AND b IN (2,3)', language: 'postgresql', keywordCase: 'lower', indentStyle: 'tabularLeft', useTabs: false } },
   { operation: 'format_sql', arguments: { sql: 'select `name`,sum(`value`) total from `sample` group by `name`', language: 'mysql', keywordCase: 'preserve', indentStyle: 'tabularRight', useTabs: true } },
@@ -196,6 +203,7 @@ oracleOperations.add('lookup_mac_vendor');
 oracleOperations.add('crypt_text_private');
 oracleOperations.add('draw_ascii_text');
 oracleOperations.add('search_emoji');
+oracleOperations.add('check_pdf_signatures_local');
 let oracleBuffer = '';
 let oracleError = '';
 let nextId = 1;
