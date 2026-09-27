@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Reflection;
+using System.Text.Json;
 
 namespace KillerTools.Engine.Reference;
 
@@ -17,5 +18,12 @@ internal static class EmbeddedCatalog
         brotli.CopyTo(output);
         output.Position = 0;
         return output;
+    }
+
+    public static T DeserializeBrotliBase64<T>(string resourceName)
+    {
+        using var stream = OpenBrotliBase64(resourceName);
+        return JsonSerializer.Deserialize<T>(stream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+            ?? throw new InvalidOperationException($"The embedded catalog {resourceName} is invalid.");
     }
 }

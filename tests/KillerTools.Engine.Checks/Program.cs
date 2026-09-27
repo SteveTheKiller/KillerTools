@@ -21,6 +21,7 @@ var checks = new (string Name, Action Run)[]
     ("safe regular expressions", CheckSafeRegex),
     ("HTTP status lookup", CheckHttpStatusLookup),
     ("port and protocol lookup", CheckPortProtocolLookup),
+    ("Microsoft reference lookups", CheckMicrosoftReferenceLookups),
     ("portable utilities", CheckPortableUtilities),
 };
 
@@ -28,6 +29,18 @@ foreach (var check in checks)
 {
     check.Run();
     Console.WriteLine($"PASS {check.Name}");
+}
+
+static void CheckMicrosoftReferenceLookups()
+{
+    var counts = MicrosoftReferenceLookups.Counts;
+    Equal(206, counts.Skus);
+    Equal(228, counts.Errors);
+    Equal(292, counts.Events);
+    Equal(113, counts.Ndrs);
+    Equal("ERROR_ACCESS_DENIED", MicrosoftReferenceLookups.SearchErrors("0x00000005", 1)[0].Name);
+    Equal(4625, MicrosoftReferenceLookups.SearchEvents("failed logon", 1)[0].Id);
+    Equal("5.7.23", MicrosoftReferenceLookups.SearchNdrs("SPF Validation Failed", 1)[0].Code);
 }
 
 static void CheckPortProtocolLookup()

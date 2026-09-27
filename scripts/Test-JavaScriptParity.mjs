@@ -75,9 +75,13 @@ const requests = [
   { operation: 'lookup_port_protocol', arguments: { query: 'https', limit: 6 } },
   { operation: 'lookup_port_protocol', arguments: { query: 'dangerous', limit: 4 } },
   { operation: 'lookup_port_protocol', arguments: { query: '3389', limit: 10 } },
+  { operation: 'lookup_exchange_ndr', arguments: { query: 'spf', limit: 4 } },
+  { operation: 'lookup_m365_sku', arguments: { query: 'business premium', limit: 5 } },
+  { operation: 'lookup_windows_error', arguments: { query: 'access denied', limit: 5 } },
+  { operation: 'lookup_windows_event', arguments: { query: '4625', limit: 5 } },
 ];
 
-const oracleOperations = new Set(['calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv', 'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers', 'test_regex', 'lookup_http_status', 'lookup_port_protocol']);
+const oracleOperations = new Set(['calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv', 'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers', 'test_regex', 'lookup_http_status', 'lookup_port_protocol', 'lookup_exchange_ndr', 'lookup_m365_sku', 'lookup_windows_error', 'lookup_windows_event']);
 const oracle = spawn(process.execPath, [resolve(site, 'mcp/dist/killermcp.mjs')], { cwd: resolve(site, 'mcp'), stdio: ['pipe', 'pipe', 'pipe'] });
 let oracleBuffer = '';
 let oracleError = '';
@@ -170,4 +174,4 @@ if (run.status !== 0) {
 }
 
 assert.deepEqual(JSON.parse(run.stdout), expected);
-console.log(`${requests.length} live JavaScript parity cases passed for 30 native operations.`);
+console.log(`${requests.length} live JavaScript parity cases passed for 34 native operations.`);

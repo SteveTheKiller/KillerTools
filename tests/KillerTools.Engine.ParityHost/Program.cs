@@ -51,8 +51,26 @@ foreach (var request in input.RootElement.EnumerateArray())
         "test_regex" => RegexResult(arguments),
         "lookup_http_status" => HttpStatusResult(arguments),
         "lookup_port_protocol" => PortProtocolResult(arguments),
+        "lookup_exchange_ndr" => MicrosoftReferenceResult(operation, arguments),
+        "lookup_m365_sku" => MicrosoftReferenceResult(operation, arguments),
+        "lookup_windows_error" => MicrosoftReferenceResult(operation, arguments),
+        "lookup_windows_event" => MicrosoftReferenceResult(operation, arguments),
         _ => throw new InvalidOperationException($"Unknown parity operation: {operation}"),
     });
+}
+
+static object MicrosoftReferenceResult(string operation, JsonElement arguments)
+{
+    var query = arguments.GetProperty("query").GetString()!;
+    var limit = arguments.GetProperty("limit").GetInt32();
+    return operation switch
+    {
+        "lookup_exchange_ndr" => MicrosoftReferenceLookups.SearchNdrs(query, limit).Select(item => new { category = item.Category, code = item.Code, name = item.Name, description = item.Description, cause = item.Cause, fix = item.Fix, severity = item.Severity }),
+        "lookup_m365_sku" => MicrosoftReferenceLookups.SearchSkus(query, limit).Select(item => new { category = item.Category, guid = item.Guid, stringId = item.StringId, name = item.Name, description = item.Description, tier = item.Tier }),
+        "lookup_windows_error" => MicrosoftReferenceLookups.SearchErrors(query, limit).Select(item => new { category = item.Category, hex = item.Hex, decimalValue = item.Decimal, name = item.Name, description = item.Description, severity = item.Severity }).Select(item => new Dictionary<string, object> { ["category"] = item.category, ["hex"] = item.hex, ["decimal"] = item.decimalValue, ["name"] = item.name, ["description"] = item.description, ["severity"] = item.severity }),
+        "lookup_windows_event" => MicrosoftReferenceLookups.SearchEvents(query, limit).Select(item => new { category = item.Category, log = item.Log, id = item.Id, name = item.Name, description = item.Description, severity = item.Severity }),
+        _ => throw new InvalidOperationException(),
+    };
 }
 
 static object PortProtocolResult(JsonElement arguments) => PortProtocolLookup.Search(arguments.GetProperty("query").GetString()!, arguments.GetProperty("limit").GetInt32())
