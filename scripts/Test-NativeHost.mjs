@@ -22,11 +22,12 @@ const environment = {
   KILLERMCP_FAKE_NOTES: '1',
   KILLERMCP_FAKE_KILLENDAR: '1',
   KILLERMCP_FAKE_SHELL: '1',
+  KILLERMCP_FAKE_BENCH: '1',
   KILLERPDF_CLI: resolve('missing-killerpdf.exe'),
   KILLERSCAN_CLI: resolve('missing-killerscan.exe'),
   KILLERSHELL_CLI: resolve('tests/KillerMCP.Runtime.Checks/bin/Debug/net10.0/KillerMCP.Runtime.Checks.exe'),
   KILLENDAR_CLI: resolve('tests/KillerMCP.Runtime.Checks/bin/Debug/net10.0/KillerMCP.Runtime.Checks.exe'),
-  KILLERBENCH_CLI: resolve('missing-killerbench.exe'),
+  KILLERBENCH_CLI: resolve('tests/KillerMCP.Runtime.Checks/bin/Debug/net10.0/KillerMCP.Runtime.Checks.exe'),
 };
 const child = spawn('dotnet', ['run', '--project', 'src/KillerMCP/KillerMCP.csproj', '--no-build'], { stdio: ['pipe', 'pipe', 'inherit'], env: environment });
 let buffer = '';
@@ -80,6 +81,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'killernotes_search',
   'killendar_agenda',
   'killershell_search_files',
+  'killerbench_device_code', 'killerbench_win32_code',
 ]);
 const called = await request('tools/call', { name: 'text_statistics', arguments: { text: 'hello world' } });
 assert.deepEqual(JSON.parse(called.content[0].text), { characterCount: 11, wordCount: 2, lineCount: 1, byteSize: 11 });
@@ -153,6 +155,8 @@ const agenda = await request('tools/call', { name: 'killendar_agenda', arguments
 assert.equal(JSON.parse(agenda.content[0].text)[0].title, 'Field visit');
 const files = await request('tools/call', { name: 'killershell_search_files', arguments: { root: resolve('.'), name: '*.txt', limit: 2 } });
 assert.equal(JSON.parse(files.content[0].text).results.length, 1);
+const deviceCode = await request('tools/call', { name: 'killerbench_device_code', arguments: { code: '31' } });
+assert.equal(JSON.parse(deviceCode.content[0].text).name, 'Device problem');
 child.stdin.end();
 updateServer.close();
 await rm(updateDirectory, { recursive: true, force: true });

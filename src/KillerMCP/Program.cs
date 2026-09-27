@@ -35,6 +35,7 @@ if (killerShell is not null)
 {
     appAdapters.Add(killerShell);
 }
+appAdapters.AddRange(KillerBenchAdapter.Create(AppDiscovery.Discover("killerbench")));
 ToolRegistry.SetAdapters(appAdapters);
 string? line;
 while ((line = Console.ReadLine()) is not null)

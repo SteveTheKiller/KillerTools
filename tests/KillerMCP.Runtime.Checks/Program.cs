@@ -1,7 +1,7 @@
 using KillerMCP.Runtime;
 using System.Text.Json;
 
-if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_NOTES") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_KILLENDAR") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_SHELL") == "1")
+if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_NOTES") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_KILLENDAR") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_SHELL") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_BENCH") == "1")
 {
     var arguments = Environment.GetCommandLineArgs().Skip(1).ToArray();
     if (arguments.SequenceEqual(["--help"]))
@@ -24,6 +24,11 @@ if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_NOTES") == "1" || Environ
     if (arguments.Length >= 5 && arguments[0] == "search" && Path.IsPathFullyQualified(arguments[1]))
     {
         Console.Write(JsonSerializer.Serialize(new { results = new[] { new { path = Path.Combine(arguments[1], "notes.txt") } }, truncated = false }));
+        return;
+    }
+    if (arguments.Length == 2 && arguments[0] is "device-code" or "win32-code")
+    {
+        Console.Write(JsonSerializer.Serialize(new { code = arguments[1], name = arguments[0] == "device-code" ? "Device problem" : "Windows error" }));
         return;
     }
     Environment.ExitCode = 2;
@@ -112,6 +117,18 @@ try
     Equal(true, (await shellAdapter.CallAsync(missingSearch.RootElement, CancellationToken.None)).IsError);
     Environment.SetEnvironmentVariable("KILLERMCP_FAKE_SHELL", null);
     Console.WriteLine("PASS native KillerShell adapter");
+
+    Environment.SetEnvironmentVariable("KILLERMCP_FAKE_BENCH", "1");
+    var benchAdapters = KillerBenchAdapter.Create(Environment.ProcessPath);
+    Equal(2, benchAdapters.Count);
+    using var code = JsonDocument.Parse("{\"code\":\"0x1F\"}");
+    var codeResult = await benchAdapters[0].CallAsync(code.RootElement, CancellationToken.None);
+    Equal(false, codeResult.IsError);
+    Equal("0x1F", JsonDocument.Parse(codeResult.Text).RootElement.GetProperty("code").GetString());
+    using var badCode = JsonDocument.Parse("{\"code\":\"4294967296\"}");
+    Equal(true, (await benchAdapters[1].CallAsync(badCode.RootElement, CancellationToken.None)).IsError);
+    Environment.SetEnvironmentVariable("KILLERMCP_FAKE_BENCH", null);
+    Console.WriteLine("PASS native KillerBench adapters");
 }
 finally
 {
