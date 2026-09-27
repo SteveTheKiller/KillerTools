@@ -30,6 +30,11 @@ if (killendar is not null)
 {
     appAdapters.Add(killendar);
 }
+var killerShell = await KillerShellAdapter.CreateAsync(AppDiscovery.Discover("killershell"));
+if (killerShell is not null)
+{
+    appAdapters.Add(killerShell);
+}
 ToolRegistry.SetAdapters(appAdapters);
 string? line;
 while ((line = Console.ReadLine()) is not null)

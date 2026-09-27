@@ -1,13 +1,14 @@
 using KillerMCP.Runtime;
 using System.Text.Json;
 
-if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_NOTES") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_KILLENDAR") == "1")
+if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_NOTES") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_KILLENDAR") == "1" || Environment.GetEnvironmentVariable("KILLERMCP_FAKE_SHELL") == "1")
 {
     var arguments = Environment.GetCommandLineArgs().Skip(1).ToArray();
     if (arguments.SequenceEqual(["--help"]))
     {
         if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_NOTES") == "1") Console.WriteLine("search <query>");
         if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_KILLENDAR") == "1") Console.WriteLine("agenda <yyyy-MM-dd>");
+        if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_SHELL") == "1") Console.WriteLine("search <folder>");
         return;
     }
     if (arguments.Length == 4 && arguments[0] == "search" && arguments[2] == "--limit")
@@ -18,6 +19,11 @@ if (Environment.GetEnvironmentVariable("KILLERMCP_FAKE_NOTES") == "1" || Environ
     if (arguments.Length == 5 && arguments[0] == "agenda" && arguments[3] == "--limit")
     {
         Console.Write(JsonSerializer.Serialize(new[] { new { title = "Field visit", date = arguments[1], days = arguments[2] } }));
+        return;
+    }
+    if (arguments.Length >= 5 && arguments[0] == "search" && Path.IsPathFullyQualified(arguments[1]))
+    {
+        Console.Write(JsonSerializer.Serialize(new { results = new[] { new { path = Path.Combine(arguments[1], "notes.txt") } }, truncated = false }));
         return;
     }
     Environment.ExitCode = 2;
@@ -90,6 +96,22 @@ try
     Equal(true, (await calendarAdapter.CallAsync(badDate.RootElement, CancellationToken.None)).IsError);
     Environment.SetEnvironmentVariable("KILLERMCP_FAKE_KILLENDAR", null);
     Console.WriteLine("PASS native Killendar adapter");
+
+    Environment.SetEnvironmentVariable("KILLERMCP_FAKE_SHELL", "1");
+    var shellAdapter = await KillerShellAdapter.CreateAsync(Environment.ProcessPath);
+    if (shellAdapter is null)
+    {
+        throw new InvalidOperationException("The KillerShell fixture adapter was not discovered.");
+    }
+    Equal("killershell_search_files", shellAdapter.Tool.Name);
+    using var search = JsonDocument.Parse(JsonSerializer.Serialize(new { root, name = "*.txt", limit = 2 }));
+    var searchResult = await shellAdapter.CallAsync(search.RootElement, CancellationToken.None);
+    Equal(false, searchResult.IsError);
+    Equal("notes.txt", Path.GetFileName(JsonDocument.Parse(searchResult.Text).RootElement.GetProperty("results")[0].GetProperty("path").GetString()));
+    using var missingSearch = JsonDocument.Parse(JsonSerializer.Serialize(new { root }));
+    Equal(true, (await shellAdapter.CallAsync(missingSearch.RootElement, CancellationToken.None)).IsError);
+    Environment.SetEnvironmentVariable("KILLERMCP_FAKE_SHELL", null);
+    Console.WriteLine("PASS native KillerShell adapter");
 }
 finally
 {
