@@ -1,6 +1,30 @@
 using System.Text.Json.Nodes;
 using KillerMCP.Clients;
 
+var fakeCodexState = Environment.GetEnvironmentVariable("KILLERMCP_FAKE_CODEX_STATE");
+if (!string.IsNullOrWhiteSpace(fakeCodexState))
+{
+    var command = Environment.GetCommandLineArgs().Skip(1).ToArray();
+    if (command.SequenceEqual(["mcp", "get", "killermcp", "--json"]))
+    {
+        if (!File.Exists(fakeCodexState)) { Console.Error.Write("No MCP server named killermcp"); return 1; }
+        Console.Write(JsonNode.Parse(File.ReadAllText(fakeCodexState))!.ToJsonString());
+        return 0;
+    }
+    if (command.Length == 5 && command[..4].SequenceEqual(["mcp", "add", "killermcp", "--"]))
+    {
+        File.WriteAllText(fakeCodexState, new JsonObject { ["transport"] = new JsonObject { ["type"] = "stdio", ["command"] = command[4], ["args"] = new JsonArray() } }.ToJsonString());
+        return 0;
+    }
+    if (command.SequenceEqual(["mcp", "remove", "killermcp"]))
+    {
+        File.Delete(fakeCodexState);
+        return 0;
+    }
+    Console.Error.Write("Unknown fake Codex command");
+    return 2;
+}
+
 var root = Path.Combine(Path.GetTempPath(), "killermcp-clients-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(root);
 try
@@ -43,12 +67,38 @@ try
     var malformed = Path.Combine(root, "malformed.json");
     File.WriteAllText(malformed, "{");
     Throws<InvalidDataException>(() => ClientRegistration.RegisterJsonClient(malformed, "Cursor", executable));
+
+    var clientNames = new[] { "CLAUDE", "CURSOR", "COPILOT", "GEMINI", "WINDSURF", "CLAUDE_DESKTOP" };
+    var codexState = Path.Combine(root, "codex-state.json");
+    Environment.SetEnvironmentVariable("KILLERMCP_FAKE_CODEX_STATE", codexState);
+    var environment = new Dictionary<string, string?> { ["PATH"] = string.Empty, ["CODEX_CLI_PATH"] = Environment.ProcessPath, ["USERPROFILE"] = root, ["APPDATA"] = root, ["LOCALAPPDATA"] = root, ["ProgramFiles"] = root };
+    foreach (var name in clientNames)
+    {
+        var path = Path.Combine(root, name, "settings.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, "{\"preservedSetting\":\"keep\"}");
+        environment[$"KILLERMCP_TEST_{name}_CONFIG"] = path;
+    }
+    var registered = ClientConfiguration.RegisterAll(executable, environment);
+    Equal(7, registered.Count);
+    Equal(executable, Read(codexState)["transport"]!["command"]!.GetValue<string>());
+    foreach (var name in clientNames)
+    {
+        var path = environment[$"KILLERMCP_TEST_{name}_CONFIG"]!;
+        Equal("keep", Read(path)["preservedSetting"]!.GetValue<string>());
+        Equal(executable, Read(path)["mcpServers"]!["killermcp"]!["command"]!.GetValue<string>());
+    }
+    Equal(7, ClientConfiguration.RemoveAll(executable, environment).Count);
+    Equal(false, File.Exists(codexState));
+    foreach (var name in clientNames) Equal(false, Read(environment[$"KILLERMCP_TEST_{name}_CONFIG"]!)["mcpServers"]!.AsObject().ContainsKey("killermcp"));
     Console.WriteLine("PASS native KillerMCP client registration");
 }
 finally
 {
+    Environment.SetEnvironmentVariable("KILLERMCP_FAKE_CODEX_STATE", null);
     Directory.Delete(root, true);
 }
+return 0;
 
 static JsonObject Read(string path) => JsonNode.Parse(File.ReadAllText(path))!.AsObject();
 

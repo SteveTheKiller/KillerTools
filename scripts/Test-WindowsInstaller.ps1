@@ -1,0 +1,108 @@
+$ErrorActionPreference = 'Stop'
+if (-not $IsWindows) { throw 'The KillerMCP Windows installer test requires Windows.' }
+$root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+
+& (Join-Path $PSScriptRoot 'Build-WindowsInstaller.ps1')
+$setup = Join-Path $root 'artifacts\installer\KillerMCP-Setup.exe'
+$fakeCodex = Join-Path $root 'tests\KillerMCP.Clients.Checks\bin\Debug\net10.0\KillerMCP.Clients.Checks.exe'
+if (-not (Test-Path -LiteralPath $setup -PathType Leaf) -or -not (Test-Path -LiteralPath $fakeCodex -PathType Leaf)) { throw 'Installer test prerequisites are missing.' }
+
+$scratch = Join-Path ([IO.Path]::GetFullPath($env:TEMP)) ('KillerMCP-native-installer-' + [guid]::NewGuid().ToString('N'))
+$installed = Join-Path $scratch 'Installed'
+$codexState = Join-Path $scratch 'codex-state.json'
+$previous = @{}
+$names = @('CLAUDE', 'CURSOR', 'COPILOT', 'GEMINI', 'WINDSURF', 'CLAUDE_DESKTOP')
+$variables = @('KILLERMCP_TEST_INSTALL_ROOT', 'KILLERMCP_TEST_RUNTIME', 'KILLERMCP_FAKE_CODEX_STATE', 'CODEX_CLI_PATH') + ($names | ForEach-Object { "KILLERMCP_TEST_${_}_CONFIG" })
+foreach ($name in $variables) { $previous[$name] = [Environment]::GetEnvironmentVariable($name) }
+$success = $false
+
+try {
+    New-Item -ItemType Directory -Path $scratch -Force | Out-Null
+    $env:KILLERMCP_TEST_INSTALL_ROOT = $installed
+    $env:KILLERMCP_FAKE_CODEX_STATE = $codexState
+    $env:CODEX_CLI_PATH = $fakeCodex
+    foreach ($name in $names) {
+        $path = Join-Path $scratch "$name\settings.json"
+        New-Item -ItemType Directory -Path (Split-Path $path) -Force | Out-Null
+        '{"preservedSetting":"keep"}' | Set-Content -LiteralPath $path -Encoding utf8NoBOM
+        [Environment]::SetEnvironmentVariable("KILLERMCP_TEST_${name}_CONFIG", $path)
+    }
+
+    $env:KILLERMCP_TEST_RUNTIME = '0'
+    $missingRuntime = Start-Process -FilePath $setup -ArgumentList '/silent' -Wait -PassThru -WindowStyle Hidden
+    if ($missingRuntime.ExitCode -ne 10 -or (Test-Path -LiteralPath $installed)) { throw 'Silent setup did not refuse installation when .NET 10 was unavailable.' }
+
+    $env:KILLERMCP_TEST_RUNTIME = '1'
+    foreach ($pass in 1..2) {
+        $install = Start-Process -FilePath $setup -ArgumentList '/silent' -Wait -PassThru -WindowStyle Hidden
+        if ($install.ExitCode -ne 0) { throw "Installer pass $pass failed with exit code $($install.ExitCode)." }
+        node (Join-Path $PSScriptRoot 'Test-NativePackage.mjs') $installed
+        if ($LASTEXITCODE -ne 0) { throw "Installed runtime check failed on pass $pass." }
+    }
+
+    $setupCopy = "$installed-Setup.exe"
+    $uninstallKey = 'HKCU:\Software\KillerMCP\InstallerTests\' + (Split-Path $scratch -Leaf)
+    $entry = Get-ItemProperty -LiteralPath $uninstallKey
+    if (-not (Test-Path -LiteralPath $setupCopy -PathType Leaf) -or $entry.DisplayVersion -ne '0.1.2' -or $entry.InstallLocation -ne $installed) { throw 'Installed Apps registration is incorrect.' }
+    $codex = Get-Content -LiteralPath $codexState -Raw | ConvertFrom-Json
+    if ($codex.transport.command -ne (Join-Path $installed 'KillerMCP.exe') -or $codex.transport.args.Count -ne 0) { throw 'Codex registration is incorrect.' }
+    foreach ($name in $names) {
+        $path = [Environment]::GetEnvironmentVariable("KILLERMCP_TEST_${name}_CONFIG")
+        $configuration = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+        if ($configuration.preservedSetting -ne 'keep' -or $configuration.mcpServers.killermcp.command -ne (Join-Path $installed 'KillerMCP.exe') -or $configuration.mcpServers.killermcp.args.Count -ne 0) { throw "$name registration is incorrect." }
+    }
+
+    $sentinel = Join-Path $installed 'user-file.txt'
+    Set-Content -LiteralPath $sentinel -Value 'keep'
+    $blocked = Start-Process -FilePath $setup -ArgumentList '/silent' -Wait -PassThru -WindowStyle Hidden
+    if ($blocked.ExitCode -eq 0 -or -not (Test-Path -LiteralPath $sentinel)) { throw 'Reinstall did not preserve an installation folder with an extra file.' }
+    Remove-Item -LiteralPath $sentinel
+
+    $runtime = Join-Path $installed 'KillerMCP.exe'
+    $runtimeBytes = [IO.File]::ReadAllBytes($runtime)
+    try {
+        [IO.File]::AppendAllText($runtime, 'modified')
+        $blocked = Start-Process -FilePath $setup -ArgumentList '/silent' -Wait -PassThru -WindowStyle Hidden
+        if ($blocked.ExitCode -eq 0) { throw 'Reinstall replaced a modified runtime file.' }
+    }
+    finally { [IO.File]::WriteAllBytes($runtime, $runtimeBytes) }
+
+    $setupBytes = [IO.File]::ReadAllBytes($setupCopy)
+    try {
+        [IO.File]::AppendAllText($setupCopy, 'modified')
+        $blocked = Start-Process -FilePath $setup -ArgumentList '/silent' -Wait -PassThru -WindowStyle Hidden
+        if ($blocked.ExitCode -eq 0) { throw 'Reinstall replaced a modified setup file.' }
+    }
+    finally { [IO.File]::WriteAllBytes($setupCopy, $setupBytes) }
+
+    $cursorPath = [Environment]::GetEnvironmentVariable('KILLERMCP_TEST_CURSOR_CONFIG')
+    $cursorOriginal = Get-Content -LiteralPath $cursorPath -Raw
+    try {
+        $cursorDifferent = $cursorOriginal | ConvertFrom-Json
+        $cursorDifferent.mcpServers.killermcp.command = 'C:\DifferentApp\KillerMCP.exe'
+        $cursorDifferent | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $cursorPath -Encoding utf8NoBOM
+        $blocked = Start-Process -FilePath $setup -ArgumentList '/silent' -Wait -PassThru -WindowStyle Hidden
+        $preserved = (Get-Content -LiteralPath $cursorPath -Raw | ConvertFrom-Json).mcpServers.killermcp.command
+        if ($blocked.ExitCode -eq 0 -or $preserved -ne 'C:\DifferentApp\KillerMCP.exe') { throw 'Reinstall replaced a different Cursor connection.' }
+    }
+    finally { Set-Content -LiteralPath $cursorPath -Value $cursorOriginal -Encoding utf8NoBOM }
+
+    Set-Content -LiteralPath $sentinel -Value 'keep'
+    $blocked = Start-Process -FilePath $setup -ArgumentList '/silent', '/uninstall' -Wait -PassThru -WindowStyle Hidden
+    if ($blocked.ExitCode -eq 0 -or -not (Test-Path -LiteralPath $sentinel)) { throw 'Uninstall did not preserve an installation folder with an extra file.' }
+    Remove-Item -LiteralPath $sentinel
+
+    $uninstall = Start-Process -FilePath $setup -ArgumentList '/silent', '/uninstall' -Wait -PassThru -WindowStyle Hidden
+    if ($uninstall.ExitCode -ne 0 -or (Test-Path -LiteralPath $installed) -or (Test-Path -LiteralPath $setupCopy) -or (Test-Path -LiteralPath $uninstallKey) -or (Test-Path -LiteralPath $codexState)) { throw 'KillerMCP uninstall did not remove its files and registrations.' }
+    foreach ($name in $names) {
+        $configuration = Get-Content -LiteralPath ([Environment]::GetEnvironmentVariable("KILLERMCP_TEST_${name}_CONFIG")) -Raw | ConvertFrom-Json
+        if ($configuration.preservedSetting -ne 'keep' -or $null -ne $configuration.mcpServers.killermcp) { throw "$name was not safely disconnected." }
+    }
+    $success = $true
+    Write-Output 'KillerMCP runtime prerequisite, install, reinstall, seven client registrations, MCP calls, and uninstall passed.'
+}
+finally {
+    foreach ($name in $variables) { [Environment]::SetEnvironmentVariable($name, $previous[$name]) }
+    if ($success -and (Test-Path -LiteralPath $scratch)) { Remove-Item -LiteralPath $scratch -Recurse -Force }
+    elseif (Test-Path -LiteralPath $scratch) { Write-Output "Installer test files retained at $scratch" }
+}

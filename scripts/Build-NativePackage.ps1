@@ -17,6 +17,9 @@ New-Item -ItemType Directory -Path $staging -Force | Out-Null
 dotnet publish (Join-Path $root 'src\KillerMCP\KillerMCP.csproj') -c Release -r $RuntimeIdentifier --self-contained false `
     -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o $staging
 if ($LASTEXITCODE -ne 0) { throw 'Native KillerMCP publish failed.' }
+dotnet publish (Join-Path $root 'src\KillerMCP.Configure\KillerMCP.Configure.csproj') -c Release -r $RuntimeIdentifier --self-contained false `
+    -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o $staging
+if ($LASTEXITCODE -ne 0) { throw 'Native KillerMCP configurator publish failed.' }
 
 $files = [ordered]@{}
 Get-ChildItem -LiteralPath $staging -File -Recurse | Sort-Object FullName | ForEach-Object {
@@ -28,6 +31,9 @@ Get-ChildItem -LiteralPath $staging -File -Recurse | Sort-Object FullName | ForE
 }
 if (-not $files.Contains('KillerMCP.exe') -and -not $files.Contains('KillerMCP')) {
     throw 'The native package does not contain the KillerMCP executable.'
+}
+if (-not $files.Contains('KillerMCP.Configure.exe') -and -not $files.Contains('KillerMCP.Configure')) {
+    throw 'The native package does not contain the KillerMCP configurator.'
 }
 
 $manifest = [ordered]@{

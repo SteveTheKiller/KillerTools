@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 import { createInterface } from 'node:readline';
@@ -8,7 +9,8 @@ import { createInterface } from 'node:readline';
 const directory = process.argv[2];
 if (!directory || !isAbsolute(directory)) throw new Error('Pass an absolute native package directory');
 const executable = join(directory, process.platform === 'win32' ? 'KillerMCP.exe' : 'KillerMCP');
-if (!existsSync(executable) || !existsSync(join(directory, 'manifest.json'))) throw new Error('Native package files are missing');
+const configurator = join(directory, process.platform === 'win32' ? 'KillerMCP.Configure.exe' : 'KillerMCP.Configure');
+if (!existsSync(executable) || !existsSync(configurator) || !existsSync(join(directory, 'manifest.json'))) throw new Error('Native package files are missing');
 
 const environment = { ...process.env };
 environment.KILLERMCP_UPDATE_API = 'http://127.0.0.1:1/unavailable';
@@ -55,4 +57,27 @@ try {
 finally {
   child.stdin.end();
   child.kill();
+}
+
+const clientRoot = await mkdtemp(join(tmpdir(), 'killermcp-native-clients-'));
+try {
+  const clientEnvironment = { ...environment, PATH: '', CODEX_CLI_PATH: join(clientRoot, 'missing-codex') };
+  for (const name of ['CLAUDE', 'CURSOR', 'COPILOT', 'GEMINI', 'WINDSURF', 'CLAUDE_DESKTOP']) {
+    const path = join(clientRoot, name, 'settings.json');
+    await mkdir(join(clientRoot, name), { recursive: true });
+    await writeFile(path, '{"preservedSetting":"keep"}');
+    clientEnvironment[`KILLERMCP_TEST_${name}_CONFIG`] = path;
+  }
+  const registered = spawnSync(configurator, ['register', executable], { env: clientEnvironment, encoding: 'utf8', windowsHide: true });
+  assert.equal(registered.status, 0, registered.stderr);
+  const cursor = JSON.parse(await readFile(clientEnvironment.KILLERMCP_TEST_CURSOR_CONFIG, 'utf8'));
+  assert.equal(cursor.preservedSetting, 'keep');
+  assert.equal(cursor.mcpServers.killermcp.command, executable);
+  const removed = spawnSync(configurator, ['unregister', executable], { env: clientEnvironment, encoding: 'utf8', windowsHide: true });
+  assert.equal(removed.status, 0, removed.stderr);
+  assert.equal(JSON.parse(await readFile(clientEnvironment.KILLERMCP_TEST_CURSOR_CONFIG, 'utf8')).mcpServers.killermcp, undefined);
+  process.stdout.write('Native KillerMCP package passed isolated client registration.\n');
+}
+finally {
+  await rm(clientRoot, { recursive: true, force: true });
 }

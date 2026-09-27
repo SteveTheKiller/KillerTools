@@ -34,6 +34,8 @@ try {
 
     & scripts\Test-NativePackage.ps1
 
+    if ($IsWindows) { & scripts\Test-WindowsInstaller.ps1 }
+
     Push-Location $site
     try {
         pnpm -C mcp build:local
