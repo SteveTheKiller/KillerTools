@@ -34,6 +34,7 @@ var checks = new (string Name, Action Run)[]
     ("JWT decoding", CheckJwt),
     ("RSA key generation", CheckRsa),
     ("password strength", CheckPasswordStrength),
+    ("bounded math", CheckBoundedMath),
 };
 
 foreach (var check in checks)
@@ -236,6 +237,16 @@ static void CheckPasswordStrength()
     Equal(10, result.PasswordLength);
     Equal(true, result.Entropy > 0);
     Equal(true, result.CrackDurationFormatted.Length > 0);
+}
+
+static void CheckBoundedMath()
+{
+    Equal(14d, BoundedMath.Evaluate("2 + 3 * 4"));
+    Equal(14d, BoundedMath.Evaluate("sqrt(81) + max(2, 5)"));
+    Equal(1d, BoundedMath.Evaluate("sin(pi / 2)"));
+    Equal(1024d, BoundedMath.Evaluate("2^10"));
+    Throws<FormatException>(() => BoundedMath.Evaluate("2^13"));
+    Throws<FormatException>(() => BoundedMath.Evaluate("unknown(1)"));
 }
 
 static void CheckHtmlAndDiff()

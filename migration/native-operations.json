@@ -15,6 +15,7 @@
   "diff_text": "verified",
   "encode_base64": "verified",
   "encode_file_base64_local": "verified",
+  "evaluate_math": "verified",
   "escape_html_entities": "verified",
   "expand_ipv4_range": "verified",
   "calculate_ipv4_subnet": "verified",

@@ -65,6 +65,7 @@ foreach (var request in input.RootElement.EnumerateArray())
         "generate_uuids" => new { ids = IdentifierGenerators.GenerateUuids(arguments.GetProperty("version").GetString()!, arguments.GetProperty("count").GetInt32(), arguments.TryGetProperty("name", out var name) ? name.GetString() : null, arguments.TryGetProperty("namespace", out var namespaceValue) ? namespaceValue.GetString() : null) },
         "parse_jwt_private" => JwtResult(arguments),
         "analyze_password_private" => PasswordStrengthResult(arguments),
+        "evaluate_math" => new { value = BoundedMath.Evaluate(arguments.GetProperty("expression").GetString()!) },
         _ => throw new InvalidOperationException($"Unknown parity operation: {operation}"),
     });
 }

@@ -48,6 +48,7 @@ assert.deepEqual(listed.tools.map(tool => tool.name), [
   'parse_jwt_private',
   'generate_rsa_keypair_private',
   'analyze_password_private',
+  'evaluate_math',
 ]);
 const called = await request('tools/call', { name: 'text_statistics', arguments: { text: 'hello world' } });
 assert.deepEqual(JSON.parse(called.content[0].text), { characterCount: 11, wordCount: 2, lineCount: 1, byteSize: 11 });
@@ -102,5 +103,7 @@ assert.match(rsaPair.publicKeyPem, /BEGIN PUBLIC KEY/);
 assert.match(rsaPair.privateKeyPem, /BEGIN RSA PRIVATE KEY/);
 const strength = await request('tools/call', { name: 'analyze_password_private', arguments: { password: 'Secret123!' } });
 assert.equal(JSON.parse(strength.content[0].text).charsetLength, 94);
+const math = await request('tools/call', { name: 'evaluate_math', arguments: { expression: 'sqrt(81) + max(2, 5)' } });
+assert.equal(JSON.parse(math.content[0].text).value, 14);
 child.stdin.end();
 console.log('Native KillerMCP stdio handshake, tool listing, and tool call passed.');

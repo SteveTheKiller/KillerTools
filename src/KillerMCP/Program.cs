@@ -90,6 +90,7 @@ static class ToolRegistry
         Tool("parse_jwt_private", "Decode a JWT locally without claiming to verify its signature.", new { token = new { type = "string", minLength = 3, maxLength = 16_384 } }, ["token"]),
         Tool("generate_rsa_keypair_private", "Generate an RSA PEM key pair locally.", new { bits = EnumSchema("2048", "3072", "4096") }, []),
         Tool("analyze_password_private", "Estimate password strength and crack time locally.", new { password = new { type = "string", maxLength = 8192 } }, ["password"]),
+        Tool("evaluate_math", "Evaluate a bounded arithmetic expression.", new { expression = new { type = "string", minLength = 1, maxLength = 256 } }, ["expression"]),
     ];
 
     public static object Call(JsonElement parameters, JsonSerializerOptions json)
@@ -146,6 +147,7 @@ static class ToolRegistry
             "parse_jwt_private" => Jwt(arguments),
             "generate_rsa_keypair_private" => RsaKeyPairs.Generate(int.Parse(OptionalString(arguments, "bits", "2048"), System.Globalization.CultureInfo.InvariantCulture)),
             "analyze_password_private" => PasswordStrength.Analyze(arguments.GetProperty("password").GetString()!),
+            "evaluate_math" => EvaluateMath(arguments),
             _ => throw new InvalidOperationException($"Unknown tool: {name}"),
             };
             return new { content = new[] { new { type = "text", text = JsonSerializer.Serialize(value, json) } } };
@@ -309,6 +311,17 @@ static class ToolRegistry
         catch (Exception exception) when (exception is FormatException or JsonException)
         {
             throw new ToolCallException("Invalid JWT");
+        }
+    }
+    private static object EvaluateMath(JsonElement arguments)
+    {
+        try
+        {
+            return new { value = BoundedMath.Evaluate(arguments.GetProperty("expression").GetString()!) };
+        }
+        catch (Exception exception) when (exception is FormatException or ArithmeticException)
+        {
+            throw new ToolCallException("Invalid or unsupported math expression");
         }
     }
 

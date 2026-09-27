@@ -99,9 +99,13 @@ const requests = [
   { operation: 'parse_jwt_private', arguments: { token: 'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJsb2NhbCIsInJvbGVzIjpbImFkbWluIl19.x' } },
   { operation: 'analyze_password_private', arguments: { password: 'Secret123!' } },
   { operation: 'analyze_password_private', arguments: { password: '' } },
+  { operation: 'evaluate_math', arguments: { expression: '2 + 3 * 4' } },
+  { operation: 'evaluate_math', arguments: { expression: 'sqrt(81) + max(2, 5)' } },
+  { operation: 'evaluate_math', arguments: { expression: 'sin(pi / 2)' } },
+  { operation: 'evaluate_math', arguments: { expression: '2^10' } },
 ];
 
-const oracleOperations = new Set(['convert_date_time', 'calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv', 'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers', 'test_regex', 'lookup_http_status', 'lookup_port_protocol', 'lookup_exchange_ndr', 'lookup_m365_sku', 'lookup_windows_error', 'lookup_windows_event', 'lookup_group_policy', 'encode_file_base64_local', 'otp_private', 'generate_uuids', 'parse_jwt_private', 'analyze_password_private']);
+const oracleOperations = new Set(['convert_date_time', 'calculate_nd_exposure', 'calculate_exposure_equivalence', 'calculate_depth_of_field', 'escape_html_entities', 'unescape_html_entities', 'diff_text', 'expand_ipv4_range', 'calculate_ipv4_subnet', 'generate_ipv6_ula', 'json_to_csv', 'parse_url', 'generate_spf_record', 'generate_dmarc_record', 'parse_email_headers', 'test_regex', 'lookup_http_status', 'lookup_port_protocol', 'lookup_exchange_ndr', 'lookup_m365_sku', 'lookup_windows_error', 'lookup_windows_event', 'lookup_group_policy', 'encode_file_base64_local', 'otp_private', 'generate_uuids', 'parse_jwt_private', 'analyze_password_private', 'evaluate_math']);
 const oracle = spawn(process.execPath, [resolve(site, 'mcp/dist/killermcp.mjs')], { cwd: resolve(site, 'mcp'), stdio: ['pipe', 'pipe', 'pipe'] });
 let oracleBuffer = '';
 let oracleError = '';
@@ -196,4 +200,4 @@ if (run.status !== 0) {
 
 assert.deepEqual(JSON.parse(run.stdout), expected);
 await rm(parityDirectory, { recursive: true, force: true });
-console.log(`${requests.length} live JavaScript parity cases passed for 46 native operations.`);
+console.log(`${requests.length} live JavaScript parity cases passed for 47 native operations.`);
