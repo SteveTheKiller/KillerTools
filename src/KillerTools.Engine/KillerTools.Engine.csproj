@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>Cross-platform utility engine shared by KillerTools and KillerMCP.</Description>
-    <Version>0.2.0</Version>
+    <Version>0.2.1</Version>
     <PackageId>KillerTools.Engine</PackageId>
     <Authors>Steve the Killer</Authors>
     <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
@@ -22,7 +22,7 @@
     <PackageReference Include="Sphere10.HashLib4CSharp" Version="3.1.2" />
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.12" />
     <PackageReference Include="Tomlyn" Version="2.10.1" />
-    <PackageReference Include="UAParser.Core" Version="4.0.6" />
+    <PackageReference Include="UAParser" Version="3.1.47" />
     <PackageReference Include="YamlDotNet" Version="18.1.0" />
   </ItemGroup>
 </Project>

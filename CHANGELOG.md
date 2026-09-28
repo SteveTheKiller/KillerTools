@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 - Unreleased
+
+### Fixed
+
+- Removed the ASP.NET Core runtime requirement from user agent parsing.
+
 ## 0.2.0 - 2026-09-27
 
 ### Added
