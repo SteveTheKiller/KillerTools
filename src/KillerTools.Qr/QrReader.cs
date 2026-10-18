@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace KillerTools.Qr;
 
 /// <summary>Finds and reads QR codes in an image. Written from scratch from the QR code standard.</summary>
