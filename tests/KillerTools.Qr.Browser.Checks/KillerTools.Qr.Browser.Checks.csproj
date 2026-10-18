@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <WasmEnableHotReload>false</WasmEnableHotReload>
+    <WasmMainJSPath>main.js</WasmMainJSPath>
+    <StartupObject>BrowserHarness</StartupObject>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/KillerTools.Qr/KillerTools.Qr.csproj" />
+    <Compile Include="../../src/KillerTools.Qr.Browser/Reader.cs" Link="Reader.cs" />
+    <Compile Include="../KillerTools.Qr.Checks/*.cs" Link="Checks/%(Filename)%(Extension)" />
+    <PackageReference Include="QRCoder" Version="1.8.0" />
+  </ItemGroup>
+</Project>
