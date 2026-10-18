@@ -9,6 +9,14 @@ internal static class Program
     {
         try
         {
+            if (args.Length == 2 && args[0] == "--write-fixture")
+            {
+                using var generator = new QRCodeGenerator();
+                using var data = generator.CreateQrCode("https://killershot.net/qr", QRCodeGenerator.ECCLevel.M);
+                using var png = new PngByteQRCode(data);
+                File.WriteAllBytes(args[1], png.GetGraphic(5));
+                return 0;
+            }
             ReadsAPlainCode();
             LinkChecks.Run();
             if (args.Contains("--links-only"))
