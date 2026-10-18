@@ -15,6 +15,7 @@ internal static class Program
             ReadsUnevenBackground();
             ReadsTwoCodes();
             RejectsBlankAndNoise();
+            ReadsKanji();
             ReadsEveryVersionAndLevel();
             ReadsEveryTextMode();
             CorrectsDamage();
@@ -129,6 +130,14 @@ internal static class Program
             Equal(1, found.Count, label + " is found");
             Equal(text, found[0].Text, label + " reads back");
         }
+    }
+
+    private static void ReadsKanji()
+    {
+        var image = Render.Upright(KanjiFixture.Modules(), 4);
+        var found = QrReader.Read(image.Pixels, image.Width, image.Height);
+        Equal(1, found.Count, "a hand-built kanji segment is found");
+        Equal("漢字", found[0].Text, "13-bit kanji characters read back");
     }
 
     private static void RejectsBlankAndNoise()
