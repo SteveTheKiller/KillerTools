@@ -23,6 +23,9 @@ try {
     dotnet run --project tests\KillerTools.Engine.Checks\KillerTools.Engine.Checks.csproj --no-build
     if ($LASTEXITCODE -ne 0) { throw 'Native engine checks failed.' }
 
+    dotnet run --project tests\KillerTools.Qr.Checks\KillerTools.Qr.Checks.csproj --no-build
+    if ($LASTEXITCODE -ne 0) { throw 'QR reader checks failed.' }
+
     Push-Location $site
     try {
         pnpm -C mcp build:local
