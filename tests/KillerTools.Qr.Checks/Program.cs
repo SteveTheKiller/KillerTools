@@ -114,6 +114,7 @@ internal static class Program
             (-47, 4.2, 0, 4),
             (128, 3, 0, 7),
             (0, 3.5, 0.25, 4),
+            (20, 3.5, 0.3, 6),
         })
         {
             string text = Corpus.Fill(version, QRCodeGenerator.ECCLevel.M);
