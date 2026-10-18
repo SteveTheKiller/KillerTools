@@ -30,6 +30,7 @@ internal static class LinkChecks
         Warns("https://example.com/go?next=%252F%252Fother.example%252Flogin", "EmbeddedDestination");
         Warns("https://example.com/download?filename=invoice.pdf.exe", "DirectDownload");
         Warns("https://example.com/invoice%252Eexe", "DirectDownload");
+        Warns("https://example.com/invoice.exe.jpg", "DisguisedDownload");
         var hidden = QrLink.Check("https://example.com/invoice\u202Egnp.exe");
         Program.Equal(QrLinkDisposition.Blocked, hidden.Disposition, "a bidirectional override cannot disguise a link");
         Program.Equal(true, hidden.Warnings.Contains("HiddenCharacters"), "a blocked hidden character has an explanation");

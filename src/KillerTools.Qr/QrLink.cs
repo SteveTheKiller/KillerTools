@@ -80,11 +80,13 @@ public static class QrLink
         string path = Decode(url.AbsolutePath).TrimEnd('/');
         int dot = path.LastIndexOf('.');
         if (dot >= 0 && DownloadExtensions.Contains(path[dot..])) warnings.Add("DirectDownload");
+        if (DisguisedDownload(path)) warnings.Add("DisguisedDownload");
         foreach (string parameter in url.Query.TrimStart('?').Split('&'))
         {
             int equals = parameter.IndexOf('=');
             if (equals < 0) continue;
             string value = Decode(parameter[(equals + 1)..]);
+            if (DisguisedDownload(value) && !warnings.Contains("DisguisedDownload")) warnings.Add("DisguisedDownload");
             int valueDot = value.LastIndexOf('.');
             if (valueDot >= 0 && DownloadExtensions.Contains(value[valueDot..]) && !warnings.Contains("DirectDownload"))
                 warnings.Add("DirectDownload");
@@ -107,5 +109,15 @@ public static class QrLink
             value = decoded;
         }
         return value;
+    }
+
+    private static bool DisguisedDownload(string value)
+    {
+        string name = value[(value.LastIndexOf('/') + 1)..];
+        string[] parts = name.Split('.');
+        for (int i = 1; i < parts.Length - 1; i++)
+            if (parts[i].ToLowerInvariant() is "exe" or "msi" or "scr" or "bat" or "cmd" or "ps1" or "vbs" or "js" or "dll" or "lnk" or "hta")
+                return true;
+        return false;
     }
 }
