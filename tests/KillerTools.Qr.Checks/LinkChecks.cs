@@ -4,6 +4,10 @@ internal static class LinkChecks
 {
     public static void Run()
     {
+        Program.Equal("https://example.com/a|http://bit.ly/code", string.Join('|', QrLink.FindWebLinks("Visit https://example.com/a. Also (http://bit.ly/code). https://example.com/a")), "OCR web links are extracted once without surrounding prose");
+        Program.Equal("https://example.com/a(b)?token=abc#part", QrLink.FindWebLinks("(https://example.com/a(b)?token=abc#part)").Single(), "OCR extraction preserves balanced URL punctuation and private query data");
+        Program.Equal(0, QrLink.FindWebLinks("Text, mailto:help@example.com and javascript:alert(1)").Count, "OCR extraction offers only explicit web links");
+        Warns(QrLink.FindWebLinks("Visit http://bit.ly/code.").Single(), "Shortener");
         Program.Equal("p@ss;w0rd", QrPayload.WifiPassword("WIFI:S:Shop;T:WPA;P:p@ss\\;w0rd;;"), "a Wi-Fi password preserves an escaped semicolon");
         Program.Equal<string?>(null, QrPayload.WifiPassword("WIFI:T:nopass;S:Guest;;"), "an open network has no password to copy");
         Program.Equal("a\\b:c,d", QrPayload.WifiPassword("WIFI:P:a\\\\b\\:c\\,d;S:Shop;;"), "Wi-Fi password escapes decode exactly");
