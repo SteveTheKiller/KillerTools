@@ -3,6 +3,43 @@ namespace KillerTools.Qr;
 /// <summary>Turns luminance into dark (true) and light (false) pixels.</summary>
 internal static class Binarizer
 {
+    /// <summary>Uses nearby blocks to separate ink from paper under uneven lighting.</summary>
+    public static BitImage Local(byte[] luma, int width, int height)
+    {
+        const int block = 8;
+        int columns = (width + block - 1) / block, rows = (height + block - 1) / block;
+        var minimum = new byte[rows, columns];
+        var maximum = new byte[rows, columns];
+        for (int row = 0; row < rows; row++)
+            for (int col = 0; col < columns; col++)
+            {
+                byte lo = 255, hi = 0;
+                for (int y = row * block; y < Math.Min(height, (row + 1) * block); y++)
+                    for (int x = col * block; x < Math.Min(width, (col + 1) * block); x++)
+                    {
+                        byte value = luma[y * width + x];
+                        lo = Math.Min(lo, value); hi = Math.Max(hi, value);
+                    }
+                minimum[row, col] = lo; maximum[row, col] = hi;
+            }
+        var image = new BitImage(width, height);
+        for (int row = 0; row < rows; row++)
+            for (int col = 0; col < columns; col++)
+            {
+                int lo = 255, hi = 0;
+                for (int r = Math.Max(0, row - 2); r <= Math.Min(rows - 1, row + 2); r++)
+                    for (int c = Math.Max(0, col - 2); c <= Math.Min(columns - 1, col + 2); c++)
+                    {
+                        lo = Math.Min(lo, minimum[r, c]); hi = Math.Max(hi, maximum[r, c]);
+                    }
+                int threshold = hi - lo >= 24 ? (hi + lo) / 2 : lo - 1;
+                for (int y = row * block; y < Math.Min(height, (row + 1) * block); y++)
+                    for (int x = col * block; x < Math.Min(width, (col + 1) * block); x++)
+                        image.Dark[y * width + x] = luma[y * width + x] <= threshold;
+            }
+        return image;
+    }
+
     /// <summary>One threshold for the whole image, chosen by Otsu's method.</summary>
     public static BitImage Global(byte[] luma, int width, int height)
     {

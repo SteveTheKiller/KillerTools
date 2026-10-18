@@ -12,6 +12,9 @@ internal static class Program
             ReadsAPlainCode();
             ReadsTurnedAndTilted();
             ChecksVersionInformation();
+            ReadsUnevenBackground();
+            ReadsTwoCodes();
+            RejectsBlankAndNoise();
             ReadsEveryVersionAndLevel();
             ReadsEveryTextMode();
             CorrectsDamage();
@@ -126,6 +129,43 @@ internal static class Program
             Equal(1, found.Count, label + " is found");
             Equal(text, found[0].Text, label + " reads back");
         }
+    }
+
+    private static void RejectsBlankAndNoise()
+    {
+        Equal(0, QrReader.Read(Enumerable.Repeat((byte)255, 256 * 192).ToArray(), 256, 192).Count, "blank paper has no codes");
+        var random = new Random(4471);
+        var noise = new byte[256 * 192];
+        random.NextBytes(noise);
+        Equal(0, QrReader.Read(noise, 256, 192).Count, "deterministic noise has no codes");
+    }
+
+    private static void ReadsTwoCodes()
+    {
+        var first = Render.Code("First capture", QRCodeGenerator.ECCLevel.M, 4, 2);
+        var second = Render.Code("https://killershot.net/second", QRCodeGenerator.ECCLevel.H, 3, 4);
+        int width = first.Width + second.Width + 30, height = Math.Max(first.Height, second.Height) + 20;
+        var pixels = Enumerable.Repeat((byte)255, width * height).ToArray();
+        for (int y = 0; y < first.Height; y++) Array.Copy(first.Pixels, y * first.Width, pixels, (y + 10) * width + 5, first.Width);
+        for (int y = 0; y < second.Height; y++) Array.Copy(second.Pixels, y * second.Width, pixels, (y + 10) * width + first.Width + 25, second.Width);
+        var found = QrReader.Read(pixels, width, height);
+        Equal(2, found.Count, "two separate codes are returned once each");
+        Equal("First capture|https://killershot.net/second", string.Join('|', found.Select(r => r.Text).Order()), "both payloads read back");
+    }
+
+    private static void ReadsUnevenBackground()
+    {
+        const string text = "https://killershot.net/uneven-background";
+        var image = Render.Code(text, QRCodeGenerator.ECCLevel.M, 5, 4);
+        for (int y = 0; y < image.Height; y++)
+            for (int x = 0; x < image.Width; x++)
+            {
+                int shade = 30 + 150 * x / image.Width;
+                image.Pixels[y * image.Width + x] = (byte)(shade + (image.Pixels[y * image.Width + x] == 0 ? 0 : 55));
+            }
+        var found = QrReader.Read(image.Pixels, image.Width, image.Height);
+        Equal(1, found.Count, "a code across a strong lighting gradient is found");
+        Equal(text, found[0].Text, "a code across a strong lighting gradient reads back");
     }
 
     private static void ChecksVersionInformation()

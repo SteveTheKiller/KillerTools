@@ -13,6 +13,9 @@ public static class QrReader
         ReadAll(image, results);
         // Light-on-dark codes (dark themes, terminals) read on the inverted image.
         ReadAll(image.Inverted(), results);
+        var local = Binarizer.Local(gray, width, height);
+        ReadAll(local, results);
+        ReadAll(local.Inverted(), results);
         return results;
     }
 
@@ -52,7 +55,7 @@ public static class QrReader
     /// <summary>Every three finders, most likely first: the ones confirmed on the most rows, with matching module sizes.</summary>
     private static IEnumerable<(Finder, Finder, Finder)> Triples(List<Finder> found)
     {
-        var f = found.OrderByDescending(x => x.Hits).Take(40).ToList();
+        var f = found.Where(x => x.Hits >= 2).OrderByDescending(x => x.Hits).Take(40).ToList();
         var triples = new List<(Finder, Finder, Finder, double)>();
         for (int i = 0; i < f.Count; i++)
             for (int j = i + 1; j < f.Count; j++)
