@@ -4,6 +4,9 @@ internal static class LinkChecks
 {
     public static void Run()
     {
+        Program.Equal("p@ss;w0rd", QrPayload.WifiPassword("WIFI:S:Shop;T:WPA;P:p@ss\\;w0rd;;"), "a Wi-Fi password preserves an escaped semicolon");
+        Program.Equal<string?>(null, QrPayload.WifiPassword("WIFI:T:nopass;S:Guest;;"), "an open network has no password to copy");
+        Program.Equal("a\\b:c,d", QrPayload.WifiPassword("WIFI:P:a\\\\b\\:c\\,d;S:Shop;;"), "Wi-Fi password escapes decode exactly");
         var result = QrLink.Check("https://killertools.net/qr");
         Program.Equal(QrLinkDisposition.Allowed, result.Disposition, "an ordinary HTTPS link is allowed");
         Program.Equal("https://killertools.net/qr", result.Url?.AbsoluteUri, "the checked destination is retained");
