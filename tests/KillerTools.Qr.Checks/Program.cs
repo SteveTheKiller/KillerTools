@@ -5,11 +5,17 @@ internal static class Program
 {
     private static int _checks;
 
-    private static int Main()
+    private static int Main(string[] args)
     {
         try
         {
             ReadsAPlainCode();
+            LinkChecks.Run();
+            if (args.Contains("--links-only"))
+            {
+                Console.WriteLine($"PASS {_checks} QR and link checks.");
+                return 0;
+            }
             ReadsTurnedAndTilted();
             ChecksVersionInformation();
             ReadsUnevenBackground();
