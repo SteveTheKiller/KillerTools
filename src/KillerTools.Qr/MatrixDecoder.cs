@@ -13,6 +13,30 @@ internal static class MatrixDecoder
         return ((data << 10) | rem) ^ 0x5412;
     }).ToArray();
 
+    public static int? ReadVersion(bool[,] modules)
+    {
+        int dimension = modules.GetLength(0);
+        if (dimension < 45) return (dimension - 17) / 4;
+        int first = 0, second = 0;
+        for (int bit = 0; bit < 18; bit++)
+        {
+            int near = dimension - 11 + bit % 3, far = bit / 3;
+            if (modules[far, near]) first |= 1 << bit;
+            if (modules[near, far]) second |= 1 << bit;
+        }
+        int best = 0, distance = 4;
+        for (int version = 7; version <= 40; version++)
+        {
+            int remainder = version << 12;
+            for (int bit = 17; bit >= 12; bit--)
+                if ((remainder & (1 << bit)) != 0) remainder ^= 0x1f25 << (bit - 12);
+            int word = (version << 12) | remainder;
+            int errors = Math.Min(int.PopCount(word ^ first), int.PopCount(word ^ second));
+            if (errors < distance) { distance = errors; best = version; }
+        }
+        return best != 0 && best * 4 + 17 == dimension ? best : null;
+    }
+
     public static (QrErrorCorrection Level, int Mask)? ReadFormat(bool[,] m)
     {
         int n = m.GetLength(0);

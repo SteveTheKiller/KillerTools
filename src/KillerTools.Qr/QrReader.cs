@@ -80,6 +80,7 @@ public static class QrReader
     {
         var modules = Detector.Sample(image, placement);
         int version = (placement.Dimension - 17) / 4;
+        if (MatrixDecoder.ReadVersion(modules) != version) return null;
         var format = MatrixDecoder.ReadFormat(modules);
         if (format is null) return null;
         var codewords = MatrixDecoder.ReadCodewords(modules, version, format.Value.Mask);

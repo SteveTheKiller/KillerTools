@@ -11,6 +11,7 @@ internal static class Program
         {
             ReadsAPlainCode();
             ReadsTurnedAndTilted();
+            ChecksVersionInformation();
             ReadsEveryVersionAndLevel();
             ReadsEveryTextMode();
             CorrectsDamage();
@@ -115,6 +116,7 @@ internal static class Program
             (128, 3, 0, 7),
             (0, 3.5, 0.25, 4),
             (20, 3.5, 0.3, 6),
+            (0, 2.5, 0, 10),
         })
         {
             string text = Corpus.Fill(version, QRCodeGenerator.ECCLevel.M);
@@ -124,6 +126,22 @@ internal static class Program
             Equal(1, found.Count, label + " is found");
             Equal(text, found[0].Text, label + " reads back");
         }
+    }
+
+    private static void ChecksVersionInformation()
+    {
+        var modules = Render.Modules(Corpus.Fill(7, QRCodeGenerator.ECCLevel.M), QRCodeGenerator.ECCLevel.M, 7);
+        int dimension = modules.GetLength(0) - 8;
+        // A valid version-8 BCH word in both places contradicts this version-7 symbol.
+        const int versionEight = 0x085bc;
+        for (int i = 0; i < 18; i++)
+        {
+            bool dark = (versionEight & (1 << i)) != 0;
+            modules[4 + i / 3, 4 + dimension - 11 + i % 3] = dark;
+            modules[4 + dimension - 11 + i % 3, 4 + i / 3] = dark;
+        }
+        var image = Render.Upright(modules, 3);
+        Equal(0, QrReader.Read(image.Pixels, image.Width, image.Height).Count, "contradictory version information is rejected");
     }
 
     internal static void Equal<T>(T expected, T actual, string scenario)
