@@ -78,6 +78,17 @@ public static class QrLink
         string path = Uri.UnescapeDataString(url.AbsolutePath).TrimEnd('/');
         int dot = path.LastIndexOf('.');
         if (dot >= 0 && DownloadExtensions.Contains(path[dot..])) warnings.Add("DirectDownload");
+        foreach (string parameter in url.Query.TrimStart('?').Split('&'))
+        {
+            int equals = parameter.IndexOf('=');
+            if (equals < 0) continue;
+            string value = Uri.UnescapeDataString(parameter[(equals + 1)..]);
+            if (Uri.TryCreate(value, UriKind.Absolute, out var destination) && destination.Scheme is "http" or "https")
+            {
+                warnings.Add("EmbeddedDestination");
+                break;
+            }
+        }
         return new(warnings.Count == 0 ? QrLinkDisposition.Allowed : QrLinkDisposition.Warning, url, warnings.ToArray());
     }
 }
