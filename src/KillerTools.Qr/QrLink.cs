@@ -50,7 +50,9 @@ public static class QrLink
                 ? QrLinkDisposition.Blocked : QrLinkDisposition.DisplayOnly, null, []);
         if (url.Scheme is "wifi" or "mailto" or "tel" or "sms" or "smsto" or "bitcoin" or "ethereum")
             return new(QrLinkDisposition.DisplayOnly, null, []);
-        if (url.Scheme is not ("https" or "http") || url.Host.Length == 0 || text.Any(char.IsControl))
+        if (Decode(text).Any(c => char.IsControl(c) || char.GetUnicodeCategory(c) == UnicodeCategory.Format))
+            return new(QrLinkDisposition.Blocked, null, ["HiddenCharacters"]);
+        if (url.Scheme is not ("https" or "http") || url.Host.Length == 0)
             return new(QrLinkDisposition.Blocked, null, []);
         var warnings = new List<string>();
         if (url.Scheme == "http") warnings.Add("PlainHttp");

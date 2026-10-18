@@ -30,6 +30,13 @@ internal static class LinkChecks
         Warns("https://example.com/go?next=%252F%252Fother.example%252Flogin", "EmbeddedDestination");
         Warns("https://example.com/download?filename=invoice.pdf.exe", "DirectDownload");
         Warns("https://example.com/invoice%252Eexe", "DirectDownload");
+        var hidden = QrLink.Check("https://example.com/invoice\u202Egnp.exe");
+        Program.Equal(QrLinkDisposition.Blocked, hidden.Disposition, "a bidirectional override cannot disguise a link");
+        Program.Equal(true, hidden.Warnings.Contains("HiddenCharacters"), "a blocked hidden character has an explanation");
+        foreach (string payload in new[] { "https://example.com/%E2%80%AEgnp.exe", "https://exam\u200Bple.com/", "https://example.com/%250Alogin" })
+            Program.Equal(QrLinkDisposition.Blocked, QrLink.Check(payload).Disposition, "encoded or invisible characters cannot bypass link blocking");
+        Program.Equal(QrLinkDisposition.Allowed, QrLink.Check("https://example.com/help?next=/account&search=hello%20world").Disposition, "ordinary relative navigation and spaces in a query are not suspicious by themselves");
+        Program.Equal(1, QrLink.Check("https://example.com/?a=https://a.example&b=https://b.example").Warnings.Count(w => w == "EmbeddedDestination"), "repeated embedded destinations produce one explanation");
         Program.Equal(QrLinkDisposition.Allowed, QrLink.Check("https://bit.ly.example.com/page").Disposition, "a shortener lookalike is checked by its actual host");
         Program.Equal(QrLinkDisposition.Blocked, QrLink.Check("https://example.com/hidden\nline").Disposition, "control characters cannot disguise a web destination");
         Program.Equal(QrLinkDisposition.Blocked, QrLink.Check("https://[broken/").Disposition, "malformed web links cannot open");
