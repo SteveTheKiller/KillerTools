@@ -27,6 +27,9 @@ internal static class LinkChecks
         Warns("https://example.com/setup.EXE?download=1", "DirectDownload");
         Warns("https://example.com/package%2Emsi", "DirectDownload");
         Warns("https://example.com/go?url=https%3A%2F%2Fother.example%2Flogin", "EmbeddedDestination");
+        Warns("https://example.com/go?next=%252F%252Fother.example%252Flogin", "EmbeddedDestination");
+        Warns("https://example.com/download?filename=invoice.pdf.exe", "DirectDownload");
+        Warns("https://example.com/invoice%252Eexe", "DirectDownload");
         Program.Equal(QrLinkDisposition.Allowed, QrLink.Check("https://bit.ly.example.com/page").Disposition, "a shortener lookalike is checked by its actual host");
         Program.Equal(QrLinkDisposition.Blocked, QrLink.Check("https://example.com/hidden\nline").Disposition, "control characters cannot disguise a web destination");
         Program.Equal(QrLinkDisposition.Blocked, QrLink.Check("https://[broken/").Disposition, "malformed web links cannot open");

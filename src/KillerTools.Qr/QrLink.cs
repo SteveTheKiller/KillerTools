@@ -75,20 +75,35 @@ public static class QrLink
         string normalizedHost = url.IdnHost.TrimEnd('.');
         if (normalizedHost.Split('.').Length > 4) warnings.Add("DeepSubdomains");
         if (Shorteners.Contains(normalizedHost)) warnings.Add("Shortener");
-        string path = Uri.UnescapeDataString(url.AbsolutePath).TrimEnd('/');
+        string path = Decode(url.AbsolutePath).TrimEnd('/');
         int dot = path.LastIndexOf('.');
         if (dot >= 0 && DownloadExtensions.Contains(path[dot..])) warnings.Add("DirectDownload");
         foreach (string parameter in url.Query.TrimStart('?').Split('&'))
         {
             int equals = parameter.IndexOf('=');
             if (equals < 0) continue;
-            string value = Uri.UnescapeDataString(parameter[(equals + 1)..]);
+            string value = Decode(parameter[(equals + 1)..]);
+            int valueDot = value.LastIndexOf('.');
+            if (valueDot >= 0 && DownloadExtensions.Contains(value[valueDot..]) && !warnings.Contains("DirectDownload"))
+                warnings.Add("DirectDownload");
+            if (value.StartsWith("//", StringComparison.Ordinal)) value = "https:" + value;
             if (Uri.TryCreate(value, UriKind.Absolute, out var destination) && destination.Scheme is "http" or "https")
             {
-                warnings.Add("EmbeddedDestination");
-                break;
+                if (!warnings.Contains("EmbeddedDestination")) warnings.Add("EmbeddedDestination");
             }
         }
         return new(warnings.Count == 0 ? QrLinkDisposition.Allowed : QrLinkDisposition.Warning, url, warnings.ToArray());
+    }
+
+    private static string Decode(string value)
+    {
+        // Bound decoding so nested escaping cannot cause unbounded work.
+        for (int i = 0; i < 3; i++)
+        {
+            string decoded = Uri.UnescapeDataString(value);
+            if (decoded == value) break;
+            value = decoded;
+        }
+        return value;
     }
 }
