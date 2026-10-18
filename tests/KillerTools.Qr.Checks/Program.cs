@@ -10,11 +10,11 @@ internal static class Program
         try
         {
             ReadsAPlainCode();
+            ReadsTurnedAndTilted();
             ReadsEveryVersionAndLevel();
             ReadsEveryTextMode();
             CorrectsDamage();
             ReadsLightOnDark();
-            ReadsTurnedAndTilted();
             Console.WriteLine($"PASS {_checks} QR reader checks.");
             return 0;
         }
@@ -110,6 +110,7 @@ internal static class Program
         foreach (var (degrees, scale, tilt, version) in new (double, double, double, int)[]
         {
             (90, 3, 0, 2), (180, 3, 0, 2), (270, 3, 0, 2), (15, 3.4, 0, 3),
+            (33, 2.6, 0, 5),
         })
         {
             string text = Corpus.Fill(version, QRCodeGenerator.ECCLevel.M);

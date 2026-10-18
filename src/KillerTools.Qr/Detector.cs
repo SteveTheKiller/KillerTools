@@ -41,6 +41,32 @@ internal static class Detector
         return (dimension & 3) switch { 0 => dimension + 1, 2 => dimension - 1, 3 => dimension + 2, _ => dimension };
     }
 
+    /// <summary>Measures finder widths along the code's own axes rather than the image axes.</summary>
+    public static double ModuleSize(BitImage image, Finder tl, Finder tr, Finder bl)
+    {
+        double Width(Finder from, Finder toward)
+        {
+            double length = Dist(from, toward), dx = (toward.X - from.X) / length, dy = (toward.Y - from.Y) / length;
+            double Half(int sign)
+            {
+                bool dark = true;
+                int transitions = 0;
+                for (double distance = 0; distance < from.ModuleSize * 8; distance += 0.25)
+                {
+                    bool next = image.At(from.X + sign * dx * distance, from.Y + sign * dy * distance);
+                    if (next == dark) continue;
+                    dark = next;
+                    if (++transitions == 3) return distance;
+                }
+                return double.NaN;
+            }
+            return (Half(1) + Half(-1) - 0.25) / 7;
+        }
+        double[] sizes = [Width(tl, tr), Width(tr, tl), Width(tl, bl), Width(bl, tl)];
+        var valid = sizes.Where(double.IsFinite).ToArray();
+        return valid.Length == 0 ? (tl.ModuleSize + tr.ModuleSize + bl.ModuleSize) / 3 : valid.Average();
+    }
+
     /// <summary>Places a code of the given side from its finder centers, assuming no perspective.</summary>
     public static Placement Place(Finder tl, Finder tr, Finder bl, int dimension, QrPoint? alignment = null)
     {

@@ -26,7 +26,7 @@ public static class QrReader
             if (results.Any(r => Inside(r.Corners, a) || Inside(r.Corners, b) || Inside(r.Corners, c))) continue;
             var (tl, tr, bl) = Detector.Order(a, b, c);
             if (!Detector.Plausible(tl, tr, bl)) continue;
-            double module = (tl.ModuleSize + tr.ModuleSize + bl.ModuleSize) / 3;
+            double module = Detector.ModuleSize(image, tl, tr, bl);
             int dimension = Detector.Dimension(tl, tr, bl, module);
             if (dimension < 21 || dimension > 177) continue;
             var placement = Detector.Place(tl, tr, bl, dimension);
