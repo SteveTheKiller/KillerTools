@@ -10,10 +10,9 @@ $repo = Split-Path -Parent $PSScriptRoot
 $projectName = if ($Checks) { 'KillerTools.Qr.Browser.Checks' } else { 'KillerTools.Qr.Browser' }
 $project = if ($Checks) { Join-Path $repo "tests\$projectName\$projectName.csproj" } else { Join-Path $repo "src\$projectName\$projectName.csproj" }
 $artifacts = Join-Path ([IO.Path]::GetFullPath($ScratchRoot)) 'qr-browser-build'
-& dotnet publish $project -c Release --artifacts-path $artifacts --nologo -v quiet
+$publish = Join-Path $artifacts ('publish-' + [guid]::NewGuid().ToString('N'))
+& dotnet publish $project -c Release --artifacts-path $artifacts "-p:PublishDir=$publish" --nologo -v quiet
 if ($LASTEXITCODE -ne 0) { throw 'Browser QR publish failed.' }
-$publish = (& dotnet msbuild $project -nologo -getProperty:PublishDir -p:Configuration=Release "-p:ArtifactsPath=$artifacts" -p:UseArtifactsOutput=true | Out-String).Trim()
-if ($LASTEXITCODE -ne 0) { throw 'Cannot locate the browser publish output.' }
 $web = Join-Path $publish 'wwwroot'
 if (-not (Test-Path -LiteralPath (Join-Path $web '_framework\dotnet.js'))) { throw "Missing browser runtime under $web" }
 if ($Checks) {
@@ -48,6 +47,6 @@ if ($current -ne $previous) { throw 'The browser manifest changed during export.
 $manifest = [ordered]@{ bundle = $bundle; files = $hashes } | ConvertTo-Json -Depth 4
 $temporary = Join-Path $destinationPath ('manifest.' + [guid]::NewGuid().ToString('N') + '.tmp')
 [IO.File]::WriteAllText($temporary, $manifest + "`n", (New-Object Text.UTF8Encoding($false)))
-if (Test-Path -LiteralPath $manifestPath) { [IO.File]::Replace($temporary, $manifestPath, $null) }
+if (Test-Path -LiteralPath $manifestPath) { [IO.File]::Replace($temporary, $manifestPath, [System.Management.Automation.Language.NullString]::Value) }
 else { [IO.File]::Move($temporary, $manifestPath) }
 Write-Output "Exported $($files.Count) verified browser QR assets: $bundle"
