@@ -29,8 +29,20 @@ public static class QrReader
             double module = Detector.ModuleSize(image, tl, tr, bl);
             int dimension = Detector.Dimension(tl, tr, bl, module);
             if (dimension < 21 || dimension > 177) continue;
-            var placement = Detector.Place(tl, tr, bl, dimension);
-            var result = Decode(image, placement);
+            QrResult? result = null;
+            foreach (int size in new[] { dimension, dimension - 4, dimension + 4 })
+            {
+                if (size < 21 || size > 177) continue;
+                result = Decode(image, Detector.Place(tl, tr, bl, size));
+                if (result is not null) break;
+                foreach (var alignment in Detector.Alignments(image, tl, tr, bl, size))
+                {
+                    result = Decode(image, Detector.Place(tl, tr, bl, size, alignment));
+                    result ??= Decode(image, Detector.Place(tl, tr, bl, size, alignment, bilinear: true));
+                    if (result is not null) break;
+                }
+                if (result is not null) break;
+            }
             if (result is null) continue;
             results.Add(result);
             used.Add(a); used.Add(b); used.Add(c);
