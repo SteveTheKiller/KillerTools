@@ -17,6 +17,7 @@ internal static class Program
                 File.WriteAllBytes(args[1], png.GetGraphic(5));
                 return 0;
             }
+            ValidatesPixelBuffer();
             ReadsAPlainCode();
             LinkChecks.Run();
             if (args.Contains("--links-only"))
@@ -38,6 +39,33 @@ internal static class Program
             return 0;
         }
         catch (Exception error) { Console.Error.WriteLine("FAIL " + error.Message); return 1; }
+    }
+
+    private static void ValidatesPixelBuffer()
+    {
+        Reject(() => QrReader.Read(new byte[2], 1, 1), typeof(ArgumentException), "gray", "oversized buffer");
+        Reject(() => QrReader.Read([], 1, 1), typeof(ArgumentException), "gray", "short buffer");
+        Reject(() => QrReader.Read(null!, 1, 1), typeof(ArgumentNullException), "gray", "null buffer");
+        foreach (int dimension in new[] { 0, -1, int.MinValue })
+        {
+            Reject(() => QrReader.Read([], dimension, 1), typeof(ArgumentOutOfRangeException), "width", "nonpositive width");
+            Reject(() => QrReader.Read([], 1, dimension), typeof(ArgumentOutOfRangeException), "height", "nonpositive height");
+        }
+        Reject(() => QrReader.Read([], 65536, 65536), typeof(ArgumentException), "gray", "pixel count wraps to zero in 32 bits");
+        Reject(() => QrReader.Read([255], int.MaxValue, int.MaxValue), typeof(ArgumentException), "gray", "pixel count wraps to one in 32 bits");
+        Equal(0, QrReader.Read([255], 1, 1).Count, "exact one-pixel buffer has no code");
+
+        static void Reject(Action read, Type expected, string parameter, string scenario)
+        {
+            try { read(); }
+            catch (Exception error)
+            {
+                Equal(expected, error.GetType(), scenario + " reports an argument error");
+                Equal(parameter, ((ArgumentException)error).ParamName, scenario + " identifies the argument");
+                return;
+            }
+            throw new InvalidOperationException(scenario + " was accepted");
+        }
     }
 
     /// <summary>A small upright code at 4 px a module reads back as the text it holds.</summary>
