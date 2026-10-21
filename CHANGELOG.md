@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 - Unreleased
+
+### Fixed
+
+- Updated the PKCS dependency to address reported denial-of-service vulnerabilities.
+
 ## 0.2.0 - 2026-09-27
 
 ### Added
