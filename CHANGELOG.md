@@ -6,6 +6,10 @@
 
 - Updated the PKCS dependency to address reported denial-of-service vulnerabilities.
 
+### Added
+
+- Added Slovenian reference translations while preserving technical identifiers and command values.
+
 ## 0.2.0 - 2026-09-27
 
 ### Added

@@ -206,7 +206,7 @@ static void CheckGroupPolicyLookup()
 
 static void CheckReferenceTranslations()
 {
-    string[] expectedLocales = ["bn", "cs", "de", "es", "fr", "hu", "it", "ja", "kk", "no", "pl", "pt", "ru", "tr", "uk", "vi", "zh", "zh-TW"];
+    string[] expectedLocales = ["bn", "cs", "de", "es", "fr", "hu", "it", "ja", "kk", "no", "pl", "pt", "ru", "tr", "uk", "vi", "zh", "zh-TW", "sl"];
     Equal(true, expectedLocales.SequenceEqual(ReferenceTranslations.SupportedLocales));
     foreach (var locale in expectedLocales)
     {
@@ -218,6 +218,13 @@ static void CheckReferenceTranslations()
     Equal("Xác thực SPF không thành công", ReferenceTranslations.Translate("exchange-ndr-lookup", "vi", "SPF Validation Failed"));
     Equal("Failed Logon", ReferenceTranslations.Translate("windows-event-lookup", "en", "Failed Logon"));
     Equal("Not Found", ReferenceTranslations.Translate("http-status-codes", "unknown", "Not Found"));
+    Equal("Ni najdeno", ReferenceTranslations.Translate("http-status-codes", "sl", "Not Found"));
+    Equal("Najmanjša dolžina gesla", ReferenceTranslations.Translate("group-policy-reference", "SL", "Minimum Password Length"));
+    Equal("Pridobi enega ali več uporabniških objektov Active Directory.", ReferenceTranslations.Translate("powershell-builder", "sl", "Gets one or more Active Directory user objects."));
+    Equal("EmailAddress", ReferenceTranslations.Translate("powershell-builder", "sl", "EmailAddress"));
+    Equal("CurrentUser", ReferenceTranslations.Translate("powershell-builder", "sl", "CurrentUser"));
+    Equal("Opozorilo", ReferenceTranslations.Translate("group-policy-reference", "sl", "Warning"));
+    Equal("Security", ReferenceTranslations.Translate("windows-event-lookup", "sl", "Security"));
 }
 
 static void CheckKillerCatalogs()

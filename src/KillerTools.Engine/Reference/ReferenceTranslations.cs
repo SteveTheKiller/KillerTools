@@ -2,7 +2,7 @@ namespace KillerTools.Engine.Reference;
 
 public static class ReferenceTranslations
 {
-    private static readonly string[] Locales = ["bn", "cs", "de", "es", "fr", "hu", "it", "ja", "kk", "no", "pl", "pt", "ru", "tr", "uk", "vi", "zh", "zh-TW"];
+    private static readonly string[] Locales = ["bn", "cs", "de", "es", "fr", "hu", "it", "ja", "kk", "no", "pl", "pt", "ru", "tr", "uk", "vi", "zh", "zh-TW", "sl"];
     private static readonly Lazy<IReadOnlyDictionary<string, IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>>> Catalogs = new(Load);
     private static readonly Lazy<IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>> GroupPolicyCatalogs = new(() => Locales.ToDictionary(
         locale => locale,
