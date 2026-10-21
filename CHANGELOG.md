@@ -6,6 +6,10 @@
 
 - Updated the PKCS dependency to address reported denial-of-service vulnerabilities.
 
+### Changed
+
+- Updated the MAC vendor catalog to the current IEEE registry.
+
 ### Added
 
 - Added Slovenian reference translations while preserving technical identifiers and command values.
