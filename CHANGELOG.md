@@ -9,6 +9,7 @@
 ### Added
 
 - Added Slovenian reference translations while preserving technical identifiers and command values.
+- Added PHP2Shell, wp2shell, BlockStrap, and Comment2Shell to the CVE street names and named exploit chains.
 
 ## 0.2.0 - 2026-09-27
 
