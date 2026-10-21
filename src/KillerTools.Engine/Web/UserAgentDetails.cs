@@ -19,7 +19,7 @@ public static partial class UserAgentParser
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(userAgent);
         var parsed = ParserInstance.Parse(userAgent);
-        var browser = Browser(userAgent, parsed.Browser.Family, parsed.Browser.Version);
+        var browser = Browser(userAgent, parsed.UA.Family, Version(parsed.UA.Major, parsed.UA.Minor, parsed.UA.Patch));
         var engine = Engine(userAgent, browser);
         var os = Os(userAgent, parsed.OS.Family, Version(parsed.OS.Major, parsed.OS.Minor, parsed.OS.Patch, parsed.OS.PatchMinor));
         var device = Device(userAgent, parsed.Device.Brand, parsed.Device.Model, parsed.Device.Family);
