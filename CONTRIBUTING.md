@@ -60,4 +60,3 @@ Be prepared to revise an approved contribution after review. Contributions must 
 ## Project-specific guidance
 
 Keep the shared engine independent of its website and MCP consumers. Test changes through the public API and preserve existing input, output, and error contracts.
-
