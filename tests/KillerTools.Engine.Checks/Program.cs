@@ -264,7 +264,11 @@ static void CheckMicrosoftReferenceLookups()
 
 static void CheckPortProtocolLookup()
 {
-    Equal(392, PortProtocolLookup.Count);
+    Equal(450, PortProtocolLookup.Count);
+    Equal(true, PortProtocolLookup.Search("Fortinet", 100).Any(entry => entry.Port.ValueKind == System.Text.Json.JsonValueKind.Number && entry.Port.GetInt32() == 541 && entry.Protocol == "TCP"));
+    foreach (var (vendor, port) in new[] { ("Fortinet", 8013), ("SonicWall", 4433), ("UniFi", 8080), ("Palo Alto", 3978), ("Sophos", 4444), ("Check Point", 18190), ("Cisco", 8305), ("WatchGuard", 8080), ("MikroTik", 8291) })
+        Equal(true, PortProtocolLookup.Search(vendor, 100).Any(entry => entry.Port.ValueKind == System.Text.Json.JsonValueKind.Number && entry.Port.GetInt32() == port));
+    Equal(true, PortProtocolLookup.Search("Calyptix", 100).Any(entry => entry.Port.ValueKind == System.Text.Json.JsonValueKind.String && entry.Port.GetString() == "Configured"));
     var result = PortProtocolLookup.Search("HTTPS", 10);
     Equal("HTTP", result[0].Service);
     Equal(80, result[0].Port.GetInt32());

@@ -13,6 +13,7 @@
 
 ### Added
 
+- Expanded firewall port coverage for common MSP platforms, including Fortinet, UniFi, and Calyptix.
 - Added Slovenian reference translations while preserving technical identifiers and command values.
 - Added PHP2Shell, wp2shell, BlockStrap, and Comment2Shell to the CVE street names and named exploit chains.
 
