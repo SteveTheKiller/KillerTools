@@ -8,7 +8,7 @@ public static class XmlFormatter
     public static string Format(string text, int indentSize = 2, bool collapseContent = true)
     {
         if (indentSize is < 0 or > 10) throw new ArgumentOutOfRangeException(nameof(indentSize));
-        var document = XDocument.Parse(text.Trim(), LoadOptions.PreserveWhitespace);
+        var document = SafeXml.Parse(text.Trim());
         var output = new StringBuilder();
         if (document.Declaration is not null)
         {
@@ -22,11 +22,12 @@ public static class XmlFormatter
             if (node is XElement element) WriteElement(output, element, 0, indentSize, collapseContent);
             else if (node is XComment comment) output.Append("<!--").Append(comment.Value).Append("-->\n");
         }
-        return output.ToString().TrimEnd('\n');
+        return SafeXml.BoundedOutput(output.ToString().TrimEnd('\n'));
     }
 
     private static void WriteElement(StringBuilder output, XElement element, int depth, int indentSize, bool collapseContent)
     {
+        SafeXml.CheckLength(output.Length);
         var indent = new string(' ', depth * indentSize);
         output.Append(indent).Append('<').Append(Name(element));
         WriteAttributes(output, element);
@@ -54,6 +55,7 @@ public static class XmlFormatter
 
     private static void WriteCompact(StringBuilder output, XNode node)
     {
+        SafeXml.CheckLength(output.Length);
         switch (node)
         {
             case XElement element:

@@ -18,7 +18,7 @@ public static class XmlJsonConverter
 
     public static string XmlToJson(string text)
     {
-        var document = XDocument.Parse(text, LoadOptions.PreserveWhitespace);
+        var document = SafeXml.Parse(text);
         var result = new Dictionary<string, object?>();
         if (document.Declaration is not null)
         {
@@ -32,7 +32,7 @@ public static class XmlJsonConverter
             if (node is XElement element) Add(result, QualifiedName(element), ConvertElement(element));
             else if (node is XComment comment) Add(result, "_comment", comment.Value);
         }
-        return JsonSerializer.Serialize(result, JsonOptions).Replace("\r\n", "\n", StringComparison.Ordinal);
+        return SafeXml.BoundedOutput(JsonSerializer.Serialize(result, JsonOptions).Replace("\r\n", "\n", StringComparison.Ordinal));
     }
 
     public static string JsonToXml(string text)
@@ -44,7 +44,7 @@ public static class XmlJsonConverter
             if (entry.Key == "_declaration") WriteDeclaration(output, entry.Value);
             else WriteValues(output, entry.Key, entry.Value, 0);
         }
-        return output.ToString().TrimEnd('\n');
+        return SafeXml.BoundedOutput(output.ToString().TrimEnd('\n'));
     }
 
     private static Dictionary<string, object?> ConvertElement(XElement element)
@@ -116,6 +116,7 @@ public static class XmlJsonConverter
 
     private static void WriteElement(StringBuilder output, string name, Dictionary<string, object?> value, int depth)
     {
+        SafeXml.CheckLength(output.Length);
         var indent = new string(' ', depth * 2);
         output.Append(indent).Append('<').Append(name);
         if (value.GetValueOrDefault("_attributes") is Dictionary<string, object?> attributes)

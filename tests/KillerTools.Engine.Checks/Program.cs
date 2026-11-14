@@ -11,6 +11,12 @@ using KillerTools.Engine.Web;
 
 var checks = new (string Name, Action Run)[]
 {
+    ("YAML alias expansion is bounded", CheckYamlExpansion),
+    ("XML entities are prohibited", CheckXmlEntities),
+    ("XML output is bounded", CheckXmlOutput),
+    ("PDF appended bytes are reported", CheckPdfAppended),
+    ("PDF signature count is bounded", CheckPdfSignatureCount),
+    ("PDF repeated ranges reuse verification", CheckPdfRepeatedRanges),
     ("text statistics", CheckTextStatistics),
     ("Unicode entities", CheckUnicodeEntities),
     ("percentages", CheckPercentages),
@@ -71,6 +77,118 @@ foreach (var check in checks)
 {
     check.Run();
     Console.WriteLine($"PASS {check.Name}");
+}
+
+static void CheckPdfRepeatedRanges()
+{
+    var pdf = SignedPdf(500_000);
+    var text = System.Text.Encoding.ASCII.GetString(pdf);
+    var range = System.Text.RegularExpressions.Regex.Match(text, @"/ByteRange\s*\[[^\]]+\]").Value;
+    var repeated = System.Text.Encoding.ASCII.GetBytes(text + string.Concat(Enumerable.Repeat(range, 31)));
+    var allocated = GC.GetAllocatedBytesForCurrentThread();
+    var result = PdfSignatures.Inspect(repeated);
+    Equal(32, result.Signatures.Count);
+    Equal(true, result.Signatures.All(signature => signature.Integrity));
+    var bytes = GC.GetAllocatedBytesForCurrentThread() - allocated;
+    Equal(true, bytes < 16_000_000);
+    Console.WriteLine($"PDF repeated range allocation: {bytes} bytes");
+}
+
+static void CheckPdfSignatureCount()
+{
+    var pdf = System.Text.Encoding.ASCII.GetBytes("/SubFilter /adbe.pkcs7.detached\n" + string.Concat(Enumerable.Repeat("/ByteRange [0 1 3 0]\n", 10_000)));
+    var started = System.Diagnostics.Stopwatch.StartNew();
+    try
+    {
+        PdfSignatures.Inspect(pdf);
+        throw new InvalidOperationException("Expected the signature count limit.");
+    }
+    catch (InvalidDataException exception)
+    {
+        Equal("PDF exceeds 32 signature limit", exception.Message);
+    }
+    Equal(true, started.Elapsed < TimeSpan.FromSeconds(1));
+}
+
+static void CheckPdfAppended()
+{
+    var pdf = SignedPdf();
+    var original = PdfSignatures.Inspect(pdf);
+    Equal(true, original.Signatures.Single().Integrity);
+    var appended = PdfSignatures.Inspect([.. pdf, .. "\nunsigned update"u8.ToArray()]);
+    Equal(true, appended.Signatures.Single().Integrity);
+    Equal(false, appended.Signatures.Single().Verified);
+    Equal(false, appended.Signatures.Single().CoversWholeDocument);
+    Equal(true, appended.ModifiedAfterLastSignature);
+    Equal(true, original.Signatures.Single().CoversWholeDocument);
+    Equal(false, original.ModifiedAfterLastSignature);
+    var incremental = PdfSignatures.Inspect(SignedPdf(previous: pdf));
+    Equal(2, incremental.Signatures.Count);
+    Equal(true, incremental.Signatures.All(signature => signature.Integrity));
+    Equal(false, incremental.Signatures[0].CoversWholeDocument);
+    Equal(true, incremental.Signatures[1].CoversWholeDocument);
+    Equal(false, incremental.ModifiedAfterLastSignature);
+    pdf[0] = (byte)'!';
+    Equal(false, PdfSignatures.Inspect(pdf).Signatures.Single().Integrity);
+}
+
+static byte[] SignedPdf(int padding = 0, byte[]? previous = null)
+{
+    using var key = System.Security.Cryptography.RSA.Create(2048);
+    var request = new System.Security.Cryptography.X509Certificates.CertificateRequest("CN=PDF fixture", key, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+    using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1));
+    const int capacity = 8192;
+    var prefix = (previous is null ? "" : System.Text.Encoding.ASCII.GetString(previous)) + "%PDF-1.7\n/SubFilter /adbe.pkcs7.detached\n/ByteRange [0000000000 1111111111 2222222222 3333333333]\n/Contents ";
+    var suffix = new string(' ', padding) + "\n%%EOF";
+    var secondOffset = prefix.Length + capacity + 2;
+    prefix = prefix.Replace("1111111111", prefix.Length.ToString("D10")).Replace("2222222222", secondOffset.ToString("D10")).Replace("3333333333", suffix.Length.ToString("D10"));
+    var signed = System.Text.Encoding.ASCII.GetBytes(prefix + suffix);
+    var cms = new System.Security.Cryptography.Pkcs.SignedCms(new System.Security.Cryptography.Pkcs.ContentInfo(signed), true);
+    var signer = new System.Security.Cryptography.Pkcs.CmsSigner(certificate);
+    signer.SignedAttributes.Add(new System.Security.Cryptography.Pkcs.Pkcs9SigningTime(DateTime.UtcNow));
+    cms.ComputeSignature(signer);
+    var hex = Convert.ToHexString(cms.Encode()).PadRight(capacity, '0');
+    return System.Text.Encoding.ASCII.GetBytes(prefix + "<" + hex + ">" + suffix);
+}
+
+static void CheckXmlOutput()
+{
+    var xml = "<root>" + string.Concat(Enumerable.Repeat("<item/>", 2000)) + "</root>";
+    Throws<FormatException>(() => XmlJsonConverter.XmlToJson(xml));
+    Throws<FormatException>(() => XmlFormatter.Format(xml, 10));
+    Throws<FormatException>(() => XmlJsonConverter.JsonToXml("{root:{_text:'" + new string('&', 4000) + "'}}"));
+}
+
+static void CheckXmlEntities()
+{
+    foreach (var xml in new[]
+    {
+        "<!DOCTYPE root [<!ENTITY a 'expanded'><!ENTITY b '&a;&a;&a;'>]><root>&b;</root>",
+        "<!DOCTYPE root [<!ENTITY a SYSTEM 'file:///does-not-exist'>]><root>&a;</root>",
+    })
+    {
+        Throws<System.Xml.XmlException>(() => XmlJsonConverter.XmlToJson(xml));
+        Throws<System.Xml.XmlException>(() => XmlFormatter.Format(xml));
+    }
+}
+
+static void CheckYamlExpansion()
+{
+    var yaml = "a: &a [one, two, three]\n";
+    for (var level = 1; level <= 9; level++)
+    {
+        var previous = (char)('a' + level - 1);
+        var current = (char)('a' + level);
+        yaml += $"{current}: &{current} [*{previous}, *{previous}, *{previous}]\n";
+    }
+    var started = System.Diagnostics.Stopwatch.StartNew();
+    var allocated = GC.GetAllocatedBytesForCurrentThread();
+    Throws<FormatException>(() => StructuredTextConverter.YamlToJson(yaml));
+    Throws<FormatException>(() => StructuredTextConverter.FormatYaml(yaml));
+    Equal(true, started.Elapsed < TimeSpan.FromSeconds(1));
+    var bytes = GC.GetAllocatedBytesForCurrentThread() - allocated;
+    Equal(true, bytes < 4_000_000);
+    Console.WriteLine($"YAML refusal: {started.Elapsed.TotalMilliseconds:F1} ms, {bytes} bytes allocated");
 }
 
 static void CheckLoremIpsum()

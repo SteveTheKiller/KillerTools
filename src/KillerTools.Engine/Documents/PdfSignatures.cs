@@ -22,6 +22,7 @@ public static partial class PdfSignatures
 
     public static PdfSignatureResult Inspect(byte[] pdf)
     {
+        if (pdf.Length > MaximumFileSize) throw new InvalidDataException("PDF exceeds 8 MB limit");
         var text = Encoding.Latin1.GetString(pdf);
         var subFilter = SubFilterRegex().Match(text);
         if (!subFilter.Success || (subFilter.Groups[1].Value.ToLowerInvariant() is not "adbe.pkcs7.detached" and not "etsi.cades.detached"))
@@ -30,8 +31,11 @@ public static partial class PdfSignatures
         }
 
         var ranges = ByteRangeRegex().Matches(text);
+        if (ranges.Count > 32) throw new InvalidDataException("PDF exceeds 32 signature limit");
         if (ranges.Count == 0) throw new InvalidDataException("PDF signature byte range is missing");
         var signatures = new List<PdfSignatureInfo>(ranges.Count);
+        var verifiedRanges = new Dictionary<(int Offset, int Length, int SecondOffset, int SecondLength), PdfSignatureInfo>();
+        var lastSignedEnd = 0;
         foreach (Match match in ranges)
         {
             var firstOffset = ParseRange(match.Groups[1]);
@@ -39,6 +43,12 @@ public static partial class PdfSignatures
             var secondOffset = ParseRange(match.Groups[3]);
             var secondLength = ParseRange(match.Groups[4]);
             ValidateRange(pdf.Length, firstOffset, firstLength, secondOffset, secondLength);
+            var range = (firstOffset, firstLength, secondOffset, secondLength);
+            if (verifiedRanges.TryGetValue(range, out var previous))
+            {
+                signatures.Add(previous);
+                continue;
+            }
 
             var signedData = new byte[firstLength + secondLength];
             Buffer.BlockCopy(pdf, firstOffset, signedData, 0, firstLength);
@@ -50,9 +60,14 @@ public static partial class PdfSignatures
             var encoded = Convert.FromHexString(hex);
             AsnDecoder.ReadEncodedValue(encoded, AsnEncodingRules.BER, out _, out _, out var consumed);
 
-            signatures.Add(Verify(encoded.AsSpan(0, consumed).ToArray(), signedData, SignatureMetadata(signedData)));
+            var coversWholeDocument = firstOffset == 0 && (long)secondOffset + secondLength == pdf.Length;
+            var signature = Verify(encoded.AsSpan(0, consumed).ToArray(), signedData, SignatureMetadata(signedData));
+            signature = signature with { CoversWholeDocument = coversWholeDocument, Verified = signature.Verified && coversWholeDocument };
+            verifiedRanges.Add(range, signature);
+            signatures.Add(signature);
+            lastSignedEnd = System.Math.Max(lastSignedEnd, secondOffset + secondLength);
         }
-        return new(signatures);
+        return new(signatures) { ModifiedAfterLastSignature = lastSignedEnd != pdf.Length };
     }
 
     private static PdfSignatureInfo Verify(byte[] encoded, byte[] signedData, PdfSignatureMetadata metadata)
@@ -137,7 +152,7 @@ public static partial class PdfSignatures
 
     private static void ValidateRange(int length, int firstOffset, int firstLength, int secondOffset, int secondLength)
     {
-        if (firstOffset < 0 || firstLength < 0 || secondOffset < 0 || secondLength < 0 || firstOffset + firstLength >= secondOffset || secondOffset + secondLength > length)
+        if (firstOffset != 0 || firstLength < 0 || secondOffset < 0 || secondLength < 0 || (long)firstOffset + firstLength >= secondOffset || (long)secondOffset + secondLength > length)
         {
             throw new InvalidDataException("PDF signature byte range is invalid");
         }
@@ -150,8 +165,14 @@ public static partial class PdfSignatures
     private static partial Regex ByteRangeRegex();
 }
 
-public sealed record PdfSignatureResult(IReadOnlyList<PdfSignatureInfo> Signatures);
-public sealed record PdfSignatureInfo(bool Verified, bool Authenticity, bool Integrity, bool Expired, PdfSignatureMeta Meta);
+public sealed record PdfSignatureResult(IReadOnlyList<PdfSignatureInfo> Signatures)
+{
+    public bool ModifiedAfterLastSignature { get; init; }
+}
+public sealed record PdfSignatureInfo(bool Verified, bool Authenticity, bool Integrity, bool Expired, PdfSignatureMeta Meta)
+{
+    public bool CoversWholeDocument { get; init; }
+}
 public sealed record PdfSignatureMeta(IReadOnlyList<PdfCertificateDetails> Certs, PdfSignatureMetadata SignatureMeta);
 public sealed record PdfSignatureMetadata(string? Reason, string? ContactInfo, string? Location, string? Name);
 public sealed record PdfCertificateDetails([property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? ClientCertificate, PdfCertificateParty IssuedBy, PdfCertificateParty IssuedTo, PdfCertificateValidity ValidityPeriod, string PemCertificate);

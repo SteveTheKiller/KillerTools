@@ -2,8 +2,13 @@
 
 ## 0.2.1 - Unreleased
 
+### Security
+
+- Bound YAML and XML processing, reject entity expansion, and limit PDF signature inspection.
+
 ### Fixed
 
+- Report PDF changes after the last signature and distinguish whole-document coverage.
 - Updated System.Security.Cryptography.Pkcs to 10.0.13 for the GHSA-846f-f764-76mx and GHSA-2fmv-rv2c-59x7 advisories.
 - Removed the ASP.NET Core runtime requirement from user agent parsing.
 

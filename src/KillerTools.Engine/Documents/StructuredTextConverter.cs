@@ -57,7 +57,25 @@ public static class StructuredTextConverter
         return writer.ToString().Replace("\r\n", "\n", StringComparison.Ordinal);
     }
 
-    private static object? ParseYaml(string text) => Normalize(YamlDeserializer.Deserialize<object>(text));
+    private static object? ParseYaml(string text)
+    {
+        if (text.Length > 16_384) throw new FormatException("YAML input exceeds 16,384 characters.");
+        var parser = new Parser(new StringReader(text));
+        var nodes = 0;
+        var depth = 0;
+        while (parser.MoveNext())
+        {
+            if (++nodes > 16_384) throw new FormatException("YAML node limit exceeded.");
+            if (parser.Current is YamlDotNet.Core.Events.AnchorAlias)
+                throw new FormatException("YAML aliases are not supported.");
+            if (parser.Current is YamlDotNet.Core.Events.MappingStart or YamlDotNet.Core.Events.SequenceStart)
+            {
+                if (++depth > 64) throw new FormatException("YAML nesting limit exceeded.");
+            }
+            else if (parser.Current is YamlDotNet.Core.Events.MappingEnd or YamlDotNet.Core.Events.SequenceEnd) depth--;
+        }
+        return Normalize(YamlDeserializer.Deserialize<object>(text));
+    }
     private static object ParseToml(string text) => Normalize(TomlSerializer.Deserialize<TomlTable>(text))!;
     private static string ToJson(object? value) => JsonSerializer.Serialize(value, JsonOptions).Replace("\r\n", "\n", StringComparison.Ordinal);
     private static string ToYaml(object? value) => YamlSerializer.Serialize(value).Replace("\r\n", "\n", StringComparison.Ordinal);
