@@ -4,7 +4,7 @@
 
 ### Security
 
-- Bound YAML and XML processing, reject entity expansion, and limit PDF signature inspection.
+- Bound JSON, YAML and XML processing, reject entity expansion, and limit PDF signature inspection.
 
 ### Fixed
 

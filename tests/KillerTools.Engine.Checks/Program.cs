@@ -11,6 +11,10 @@ using KillerTools.Engine.Web;
 
 var checks = new (string Name, Action Run)[]
 {
+    ("JSON parser refuses nested arrays", StructuredJsonDepthChecks.RejectsNestedArrays),
+    ("JSON parser refuses nested objects", StructuredJsonDepthChecks.RejectsNestedObjects),
+    ("JSON parser preserves boundary and siblings", StructuredJsonDepthChecks.PreservesBoundaryAndSiblingDepth),
+    ("JSON parser preserves shallow and wide reports", StructuredJsonDepthChecks.PreservesShallowAndWideReports),
     ("YAML alias expansion is bounded", CheckYamlExpansion),
     ("XML entities are prohibited", CheckXmlEntities),
     ("XML output is bounded", CheckXmlOutput),

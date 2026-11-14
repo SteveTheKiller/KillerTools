@@ -116,16 +116,23 @@ public static class StructuredJson
 
     private sealed class Json5Parser(string text)
     {
+        private const int MaximumDepth = 64;
         private int _index;
+        private int _depth;
 
         public object? ParseValue()
         {
             SkipTrivia();
             if (_index >= text.Length) throw Invalid();
+            if (text[_index] is '{' or '[')
+            {
+                if (_depth >= MaximumDepth) throw new FormatException("JSON5 nesting exceeds the maximum depth of 64.");
+                _depth++;
+                try { return text[_index] == '{' ? ParseObject() : ParseArray(); }
+                finally { _depth--; }
+            }
             return text[_index] switch
             {
-                '{' => ParseObject(),
-                '[' => ParseArray(),
                 '\'' or '"' => ParseString(),
                 _ => ParseAtom(),
             };
