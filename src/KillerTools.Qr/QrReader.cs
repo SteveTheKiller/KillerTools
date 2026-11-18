@@ -9,7 +9,10 @@ public static class QrReader
     /// <exception cref="ArgumentNullException">The pixel buffer is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException">A dimension is not positive.</exception>
     /// <exception cref="ArgumentException">The buffer length is not exactly the pixel count.</exception>
-    public static IReadOnlyList<QrResult> Read(byte[] gray, int width, int height, CancellationToken cancellationToken = default)
+    public static IReadOnlyList<QrResult> Read(byte[] gray, int width, int height) =>
+        Read(gray, width, height, CancellationToken.None);
+
+    public static IReadOnlyList<QrResult> Read(byte[] gray, int width, int height, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(gray);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);

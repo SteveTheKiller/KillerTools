@@ -4,6 +4,8 @@
 
 ### Security
 
+- Use authenticated encryption for new ciphertext, generate 160-bit OTP secrets, bound bcrypt verification, and keep PDF certificate checks offline.
+
 - Bound JSON, YAML and XML processing, reject entity expansion, and limit PDF signature inspection.
 - QR link checks flag more executable download types, such as .hta, .lnk and .appinstaller, and shorteners reached through a subdomain such as www.bit.ly.
 
@@ -15,6 +17,9 @@
 - QR reading can be cancelled and stops after two seconds on an image it cannot read, instead of running unbounded.
 
 ### Changed
+
+- License first-party C# code under MPL 2.0 and retain third-party notices.
+- Support standard BIP39 recovery phrase sizes and correct HTML metadata, ObjectId dates, and point-to-point subnet counts.
 
 - Updated the MAC vendor catalog to the current IEEE registry.
 

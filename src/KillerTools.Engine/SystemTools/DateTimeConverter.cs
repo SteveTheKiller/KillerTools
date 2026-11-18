@@ -12,7 +12,8 @@ public static class DateTimeConverter
         {
             "unix_seconds" => DateTimeOffset.FromUnixTimeSeconds(long.Parse(value, CultureInfo.InvariantCulture)),
             "timestamp_ms" => DateTimeOffset.FromUnixTimeMilliseconds(long.Parse(value, CultureInfo.InvariantCulture)),
-            "mongo_object_id" when value.Length == 24 => DateTimeOffset.FromUnixTimeSeconds(long.Parse(value[..8], NumberStyles.HexNumber, CultureInfo.InvariantCulture)),
+            "mongo_object_id" when value.Length == 24 && value.All(Uri.IsHexDigit) => DateTimeOffset.FromUnixTimeSeconds(long.Parse(value[..8], NumberStyles.HexNumber, CultureInfo.InvariantCulture)),
+            "mongo_object_id" => throw new FormatException("ObjectId requires 24 hexadecimal digits."),
             "excel" => DateTimeOffset.FromUnixTimeMilliseconds((long)System.Math.Round((double.Parse(value, CultureInfo.InvariantCulture) - 25569d) * 86400000d)),
             _ => DateTimeOffset.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeLocal),
         };
@@ -24,6 +25,6 @@ public static class DateTimeConverter
         return new(localBase + offset, local.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture), localBase + offset,
             utc.ToString("r", CultureInfo.InvariantCulture), utc.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
             unixMs.ToString(CultureInfo.InvariantCulture), utc.ToString("r", CultureInfo.InvariantCulture),
-            $"{utc.ToUnixTimeSeconds():x}0000000000000000", (unixMs / 86400000d + 25569d).ToString("G17", CultureInfo.InvariantCulture));
+            utc.ToUnixTimeSeconds() is >= 0 and <= uint.MaxValue ? $"{utc.ToUnixTimeSeconds():x8}0000000000000000" : string.Empty, (unixMs / 86400000d + 25569d).ToString("G17", CultureInfo.InvariantCulture));
     }
 }

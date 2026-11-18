@@ -30,7 +30,7 @@ public static class OtpTools
 
     public static OtpSecret GenerateSecret(string issuer, string account)
     {
-        var secret = string.Create(16, 0, static (buffer, _) =>
+        var secret = string.Create(32, 0, static (buffer, _) =>
         {
             for (var index = 0; index < buffer.Length; index++)
             {

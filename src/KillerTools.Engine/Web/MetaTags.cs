@@ -76,7 +76,7 @@ public static class MetaTags
     private static string BuildGroup(string title, string attribute, string prefix, IEnumerable<KeyValuePair<string, string>> fields)
     {
         var lines = new List<string> { $"<!-- {title} -->" };
-        lines.AddRange(fields.Select(field => $"<meta {attribute}=\"{prefix}{field.Key.Trim()}\" value=\"{field.Value.Trim()}\" />"));
+        lines.AddRange(fields.Select(field => $"<meta {attribute}=\"{prefix}{field.Key.Trim()}\" content=\"{System.Net.WebUtility.HtmlEncode(field.Value.Trim())}\" />"));
         return string.Join('\n', lines);
     }
 }

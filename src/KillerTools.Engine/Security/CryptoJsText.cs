@@ -11,15 +11,38 @@ public static class CryptoJsText
 
     public static string Encrypt(string value, string secret, string algorithm)
     {
-        byte[] salt = RandomNumberGenerator.GetBytes(8);
-        byte[] cleartext = Encoding.UTF8.GetBytes(value);
-        CipherParameters parameters = Derive(secret, salt, algorithm);
-        byte[] ciphertext = Transform(cleartext, parameters, algorithm, encrypt: true);
-        return Convert.ToBase64String([.. SaltedMarker, .. salt, .. ciphertext]);
+        if (algorithm != "AES-GCM") throw new ArgumentException("Use AES-GCM for new ciphertext.", nameof(algorithm));
+        ArgumentException.ThrowIfNullOrEmpty(secret);
+        byte[] plaintext = StrictUtf8.GetBytes(value);
+        byte[] envelope = new byte[HeaderLength + plaintext.Length];
+        var salt = envelope.AsSpan(0, SaltLength);
+        var nonce = envelope.AsSpan(SaltLength, NonceLength);
+        RandomNumberGenerator.Fill(salt);
+        RandomNumberGenerator.Fill(nonce);
+        Span<byte> key = stackalloc byte[32];
+        try
+        {
+            Rfc2898DeriveBytes.Pbkdf2(secret, salt, key, Iterations, HashAlgorithmName.SHA256);
+            using var cipher = new AesGcm(key, TagLength);
+            cipher.Encrypt(nonce, plaintext, envelope.AsSpan(HeaderLength), envelope.AsSpan(SaltLength + NonceLength, TagLength), "kt1:"u8);
+            return "kt1:" + Convert.ToBase64String(envelope);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+            CryptographicOperations.ZeroMemory(plaintext);
+        }
     }
+
+    private const int Iterations = 600_000;
+    private const int SaltLength = 16;
+    private const int NonceLength = 12;
+    private const int TagLength = 16;
+    private const int HeaderLength = SaltLength + NonceLength + TagLength;
 
     public static string Decrypt(string value, string secret, string algorithm)
     {
+        if (algorithm == "AES-GCM") return DecryptAuthenticated(value, secret);
         byte[] formatted = Convert.FromBase64String(value);
         byte[] salt;
         byte[] ciphertext;
@@ -37,6 +60,29 @@ public static class CryptoJsText
 
         CipherParameters parameters = Derive(secret, salt, algorithm);
         return StrictUtf8.GetString(Transform(ciphertext, parameters, algorithm, encrypt: false));
+    }
+
+    private static string DecryptAuthenticated(string value, string secret)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(secret);
+        if (!value.StartsWith("kt1:", StringComparison.Ordinal)) throw new FormatException("Unsupported ciphertext format.");
+        byte[] envelope = Convert.FromBase64String(value[4..]);
+        if (envelope.Length < HeaderLength) throw new FormatException("Incomplete ciphertext.");
+        byte[] plaintext = new byte[envelope.Length - HeaderLength];
+        Span<byte> key = stackalloc byte[32];
+        try
+        {
+            Rfc2898DeriveBytes.Pbkdf2(secret, envelope.AsSpan(0, SaltLength), key, Iterations, HashAlgorithmName.SHA256);
+            using var cipher = new AesGcm(key, TagLength);
+            cipher.Decrypt(envelope.AsSpan(SaltLength, NonceLength), envelope.AsSpan(HeaderLength),
+                envelope.AsSpan(SaltLength + NonceLength, TagLength), plaintext, "kt1:"u8);
+            return StrictUtf8.GetString(plaintext);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+            CryptographicOperations.ZeroMemory(plaintext);
+        }
     }
 
     private static CipherParameters Derive(string secret, byte[] salt, string algorithm)

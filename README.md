@@ -6,6 +6,8 @@ The engine contains platform-neutral utility behavior and does not depend on MCP
 
 ## Current status
 
+First-party C# source is licensed under the [Mozilla Public License 2.0](LICENSE). Embedded third-party materials and dependencies retain their own licenses. See [Third-party notices](THIRD-PARTY-NOTICES.md). Earlier distributions retain the terms under which they were distributed.
+
 The native engine covers the complete KillerTools website catalog. Every ported operation is checked against the existing JavaScript implementation.
 
 ## Build and check

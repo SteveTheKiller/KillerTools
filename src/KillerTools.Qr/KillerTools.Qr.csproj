@@ -3,6 +3,6 @@
     <Description>QR code reader written from scratch for KillerTools and KillerShot. No dependencies.</Description>
     <Version>0.1.0</Version>
     <Authors>Steve the Killer</Authors>
-    <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+    <PackageLicenseExpression>MPL-2.0</PackageLicenseExpression>
   </PropertyGroup>
 </Project>

@@ -13,7 +13,7 @@ public static class Bip39
 
     public static string EntropyToMnemonic(string entropy, string language = "English")
     {
-        if (entropy.Length is < 16 or > 32 || entropy.Length % 4 != 0 || !entropy.All(Uri.IsHexDigit)) throw new FormatException("Invalid BIP39 entropy.");
+        if (entropy.Length is < 32 or > 64 || entropy.Length % 8 != 0 || !entropy.All(Uri.IsHexDigit)) throw new FormatException("Invalid BIP39 entropy.");
         var bytes = Convert.FromHexString(entropy);
         var checksumLength = bytes.Length * 8 / 32;
         var hash = SHA256.HashData(bytes);
@@ -25,12 +25,12 @@ public static class Bip39
     public static string MnemonicToEntropy(string mnemonic, string language = "English")
     {
         var list = GetList(language);
-        var words = mnemonic.Trim().Split([list.Spacer], StringSplitOptions.RemoveEmptyEntries);
+        var words = mnemonic.Normalize(System.Text.NormalizationForm.FormKD).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length == 0) throw new FormatException("Invalid BIP39 mnemonic.");
         var indexes = words.Select(word => list.Index.TryGetValue(word, out var index) ? index : throw new FormatException("Invalid BIP39 word.")).ToArray();
         var bits = string.Concat(indexes.Select(index => Convert.ToString(index, 2).PadLeft(11, '0')));
         var entropyLength = 32 * (bits.Length / 33);
-        if (entropyLength is < 64 or > 128 || entropyLength % 16 != 0 || bits.Length != entropyLength + entropyLength / 32) throw new FormatException("Invalid BIP39 mnemonic length.");
+        if (entropyLength is < 128 or > 256 || entropyLength % 32 != 0 || bits.Length != entropyLength + entropyLength / 32) throw new FormatException("Invalid BIP39 mnemonic length.");
         var entropyBits = bits[..entropyLength];
         var checksumBits = bits[entropyLength..];
         var bytes = Enumerable.Range(0, entropyLength / 8).Select(index => Convert.ToByte(entropyBits.Substring(index * 8, 8), 2)).ToArray();

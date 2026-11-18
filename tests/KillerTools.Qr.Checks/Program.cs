@@ -17,6 +17,7 @@ internal static class Program
                 File.WriteAllBytes(args[1], png.GetGraphic(5));
                 return 0;
             }
+            Equal(true, typeof(QrReader).GetMethod("Read", [typeof(byte[]), typeof(int), typeof(int)]) is not null, "three-argument binary entry point");
             ValidatesPixelBuffer();
             ReadsAPlainCode();
             LinkChecks.Run();

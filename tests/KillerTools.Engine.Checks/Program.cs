@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using KillerTools.Engine.Math;
 using KillerTools.Engine.Numbers;
 using KillerTools.Engine.Text;
@@ -18,6 +19,7 @@ var checks = new (string Name, Action Run)[]
     ("YAML alias expansion is bounded", CheckYamlExpansion),
     ("XML entities are prohibited", CheckXmlEntities),
     ("XML output is bounded", CheckXmlOutput),
+    ("PDF offline trust", CheckPdfOfflineTrust),
     ("PDF appended bytes are reported", CheckPdfAppended),
     ("PDF signature count is bounded", CheckPdfSignatureCount),
     ("PDF repeated ranges reuse verification", CheckPdfRepeatedRanges),
@@ -79,6 +81,7 @@ var checks = new (string Name, Action Run)[]
 
 foreach (var check in checks)
 {
+    if (args.Length > 0 && !args.Contains(check.Name)) continue;
     check.Run();
     Console.WriteLine($"PASS {check.Name}");
 }
@@ -136,10 +139,34 @@ static void CheckPdfAppended()
     Equal(false, PdfSignatures.Inspect(pdf).Signatures.Single().Integrity);
 }
 
-static byte[] SignedPdf(int padding = 0, byte[]? previous = null)
+static void CheckPdfOfflineTrust()
+{
+    using var rootKey = System.Security.Cryptography.RSA.Create(2048);
+    var rootRequest = new CertificateRequest("CN=Fixture root", rootKey, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+    rootRequest.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
+    rootRequest.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign, true));
+    var now = DateTimeOffset.UtcNow;
+    using var root = rootRequest.CreateSelfSigned(now.AddDays(-2), now.AddDays(2));
+    using var leafKey = System.Security.Cryptography.RSA.Create(2048);
+    var leafRequest = new CertificateRequest("CN=Signer", leafKey, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+    using var leaf = leafRequest.Create(root, now.AddDays(-1), now.AddDays(1), [1]);
+    using var signingLeaf = leaf.CopyWithPrivateKey(leafKey);
+    var pdf = SignedPdf(signingCertificate: signingLeaf);
+    var untrusted = PdfSignatures.Inspect(pdf).Signatures.Single();
+    Equal(false, untrusted.Authenticity);
+    var trusted = PdfSignatures.Inspect(pdf, new X509Certificate2Collection(root)).Signatures.Single();
+    Equal(true, trusted.Authenticity);
+    Equal("unknown", trusted.RevocationStatus);
+    Equal(false, trusted.Verified);
+    using var policy = PdfSignatures.CreateLocalChain(null);
+    Equal(true, policy.ChainPolicy.DisableCertificateDownloads);
+    Equal(X509RevocationMode.Offline, policy.ChainPolicy.RevocationMode);
+}
+
+static byte[] SignedPdf(int padding = 0, byte[]? previous = null, X509Certificate2? signingCertificate = null)
 {
     using var key = System.Security.Cryptography.RSA.Create(2048);
-    var request = new System.Security.Cryptography.X509Certificates.CertificateRequest("CN=PDF fixture", key, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+    var request = new System.Security.Cryptography.X509Certificates.CertificateRequest("CN=PDF fixture, OU=First, OU=Second", key, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
     using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1));
     const int capacity = 8192;
     var prefix = (previous is null ? "" : System.Text.Encoding.ASCII.GetString(previous)) + "%PDF-1.7\n/SubFilter /adbe.pkcs7.detached\n/ByteRange [0000000000 1111111111 2222222222 3333333333]\n/Contents ";
@@ -148,7 +175,7 @@ static byte[] SignedPdf(int padding = 0, byte[]? previous = null)
     prefix = prefix.Replace("1111111111", prefix.Length.ToString("D10")).Replace("2222222222", secondOffset.ToString("D10")).Replace("3333333333", suffix.Length.ToString("D10"));
     var signed = System.Text.Encoding.ASCII.GetBytes(prefix + suffix);
     var cms = new System.Security.Cryptography.Pkcs.SignedCms(new System.Security.Cryptography.Pkcs.ContentInfo(signed), true);
-    var signer = new System.Security.Cryptography.Pkcs.CmsSigner(certificate);
+    var signer = new System.Security.Cryptography.Pkcs.CmsSigner(signingCertificate ?? certificate) { IncludeOption = X509IncludeOption.EndCertOnly };
     signer.SignedAttributes.Add(new System.Security.Cryptography.Pkcs.Pkcs9SigningTime(DateTime.UtcNow));
     cms.ComputeSignature(signer);
     var hex = Convert.ToHexString(cms.Encode()).PadRight(capacity, '0');
@@ -249,7 +276,10 @@ static void CheckDateTimeConversions()
     var value = DateTimeConverter.Convert("0", "unix_seconds");
     Equal("0", value.UnixSeconds);
     Equal("0", value.TimestampMs);
-    Equal("00000000000000000", value.MongoObjectId);
+    Equal(new string('0', 24), value.MongoObjectId);
+    Equal("0", DateTimeConverter.Convert(value.MongoObjectId, "mongo_object_id").UnixSeconds);
+    Equal("", DateTimeConverter.Convert("-1", "unix_seconds").MongoObjectId);
+    Throws<FormatException>(() => DateTimeConverter.Convert("00000000invalidsuffix000", "mongo_object_id"));
     Equal("25569", value.Excel);
 }
 
@@ -469,8 +499,9 @@ static void CheckYamlToml()
 static void CheckMetaTags()
 {
     var html = MetaTags.Generate("website", [new("title", "KillerTools"), new("url", "https://killertools.net")]);
-    Equal(true, html.Contains("<meta property=\"og:title\" value=\"KillerTools\" />", StringComparison.Ordinal));
-    Equal(true, html.Contains("<meta name=\"twitter:title\" value=\"KillerTools\" />", StringComparison.Ordinal));
+    Equal(true, html.Contains("<meta property=\"og:title\" content=\"KillerTools\" />", StringComparison.Ordinal));
+    Equal(true, html.Contains("<meta name=\"twitter:title\" content=\"KillerTools\" />", StringComparison.Ordinal));
+    Equal(true, MetaTags.Generate("website", [new("title", "A \"B\" & C")]).Contains("A &quot;B&quot; &amp; C", StringComparison.Ordinal));
     Throws<ArgumentException>(() => MetaTags.Generate("website", [new("unknown", "value")]));
 }
 
@@ -490,6 +521,8 @@ static void CheckNetworkCalculations()
     Equal("192.168.1.0/24", subnet.Cidr);
     Equal("192.168.1.255", subnet.BroadcastAddress);
     Equal(254L, subnet.UsableHosts);
+    Equal(2L, Ipv4Tools.CalculateSubnet("192.0.2.0/31").UsableHosts);
+    Equal(1L, Ipv4Tools.CalculateSubnet("192.0.2.0/32").UsableHosts);
 
     Equal("fd5b:9179:b4b9::/48", Ipv6Ula.Generate("00:11:22:33:44:55", 1700000000000).Ula48);
 }
@@ -573,7 +606,7 @@ static void CheckOtp()
     Equal(true, OtpTools.VerifyCode(secret, 0, "755224"));
     Equal(false, OtpTools.VerifyCode(secret, 0, "000000"));
     var generated = OtpTools.GenerateSecret("Killer Tools", "user@example.com");
-    Equal(16, generated.Secret.Length);
+    Equal(32, generated.Secret.Length);
     Equal(true, generated.Secret.All(character => "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".Contains(character)));
     Equal(true, generated.Uri.StartsWith("otpauth://totp/Killer%20Tools:user%40example.com?issuer=Killer%20Tools&secret=", StringComparison.Ordinal));
 }
@@ -628,9 +661,15 @@ static void CheckCryptoJsText()
     foreach (var vector in vectors)
     {
         Equal("hello π", CryptoJsText.Decrypt(vector.Value, "secret", vector.Key));
-        string encrypted = CryptoJsText.Encrypt("round trip π", "secret", vector.Key);
-        Equal("round trip π", CryptoJsText.Decrypt(encrypted, "secret", vector.Key));
+        Throws<ArgumentException>(() => CryptoJsText.Encrypt("new", "secret", vector.Key));
     }
+    Throws<ArgumentException>(() => CryptoJsText.Encrypt("new", "", "AES-GCM"));
+    var encrypted = CryptoJsText.Encrypt("round trip π", "secret", "AES-GCM");
+    Equal("round trip π", CryptoJsText.Decrypt(encrypted, "secret", "AES-GCM"));
+    Throws<System.Security.Cryptography.CryptographicException>(() => CryptoJsText.Decrypt(encrypted, "wrong", "AES-GCM"));
+    byte[] envelope = Convert.FromBase64String(encrypted[4..]);
+    envelope[^1] ^= 1;
+    Throws<System.Security.Cryptography.CryptographicException>(() => CryptoJsText.Decrypt("kt1:" + Convert.ToBase64String(envelope), "secret", "AES-GCM"));
 }
 
 static void CheckBcrypt()
@@ -638,6 +677,7 @@ static void CheckBcrypt()
     const string bcryptJsHash = "$2b$04$abcdefghijklmnopqrstuuSOK8qq7pwSzIsE/gr5lck387Zp7ucXu";
     Equal(true, PasswordBcrypt.Verify("private", bcryptJsHash));
     Equal(false, PasswordBcrypt.Verify("wrong", bcryptJsHash));
+    Throws<FormatException>(() => PasswordBcrypt.Verify("private", bcryptJsHash.Replace("$04$", "$15$")));
     var hash = PasswordBcrypt.Hash("private", 4);
     Equal(true, PasswordBcrypt.Verify("private", hash));
 }
@@ -674,24 +714,15 @@ static void CheckPasswordGeneration()
 
 static void CheckBip39()
 {
-    var expected = new Dictionary<string, string>
+    Throws<FormatException>(() => Bip39.EntropyToMnemonic(new string('0', 16)));
+    foreach (var (bytes, lastWord) in new[] { (16, "about"), (20, "address"), (24, "agent"), (28, "admit"), (32, "art") })
     {
-        ["English"] = "abandon abandon abandon abandon abandon able",
-        ["Czech"] = "abdikace abdikace abdikace abdikace abdikace adresa",
-        ["French"] = "abaisser abaisser abaisser abaisser abaisser abdiquer",
-        ["Italian"] = "abaco abaco abaco abaco abaco abbinato",
-        ["Japanese"] = "あいこくしん　あいこくしん　あいこくしん　あいこくしん　あいこくしん　あいだ",
-        ["Korean"] = "가격 가격 가격 가격 가격 가난",
-        ["Portuguese"] = "abacate abacate abacate abacate abacate abalar",
-        ["Spanish"] = "ábaco ábaco ábaco ábaco ábaco abeja",
-        ["Chinese simplified"] = "的 的 的 的 的 是",
-        ["Chinese traditional"] = "的 的 的 的 的 是",
-    };
-    Equal(10, Bip39.Languages.Count);
-    foreach (var (language, mnemonic) in expected)
-    {
-        Equal(mnemonic, Bip39.EntropyToMnemonic("0000000000000000", language));
-        Equal("0000000000000000", Bip39.MnemonicToEntropy(mnemonic, language));
+        var entropy = new string('0', bytes * 2);
+        var phrase = string.Join(" ", Enumerable.Repeat("abandon", bytes * 3 / 4 - 1).Append(lastWord));
+        Equal(phrase, Bip39.EntropyToMnemonic(entropy));
+        Equal(entropy, Bip39.MnemonicToEntropy(phrase));
+        foreach (var language in Bip39.Languages)
+            Equal(entropy, Bip39.MnemonicToEntropy(Bip39.EntropyToMnemonic(entropy, language), language));
     }
     Equal(32, Bip39.GenerateEntropy().Length);
 }

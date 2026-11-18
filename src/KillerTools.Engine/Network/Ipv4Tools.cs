@@ -71,7 +71,7 @@ public static class Ipv4Tools
             prefix,
             Format(~mask),
             size,
-            size <= 2 ? (size == 2 ? 0 : 1) : size - 2,
+            size <= 2 ? size : size - 2,
             Format(first),
             Format(last),
             size <= 2 ? null : Format(broadcast),

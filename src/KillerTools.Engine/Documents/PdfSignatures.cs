@@ -5,6 +5,8 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("KillerTools.Engine.Checks")]
+
 namespace KillerTools.Engine.Documents;
 
 public static partial class PdfSignatures
@@ -20,7 +22,9 @@ public static partial class PdfSignatures
         return Inspect(pdf);
     }
 
-    public static PdfSignatureResult Inspect(byte[] pdf)
+    public static PdfSignatureResult Inspect(byte[] pdf) => Inspect(pdf, null);
+
+    internal static PdfSignatureResult Inspect(byte[] pdf, X509Certificate2Collection? trustRoots)
     {
         if (pdf.Length > MaximumFileSize) throw new InvalidDataException("PDF exceeds 8 MB limit");
         var text = Encoding.Latin1.GetString(pdf);
@@ -61,7 +65,7 @@ public static partial class PdfSignatures
             AsnDecoder.ReadEncodedValue(encoded, AsnEncodingRules.BER, out _, out _, out var consumed);
 
             var coversWholeDocument = firstOffset == 0 && (long)secondOffset + secondLength == pdf.Length;
-            var signature = Verify(encoded.AsSpan(0, consumed).ToArray(), signedData, SignatureMetadata(signedData));
+            var signature = Verify(encoded.AsSpan(0, consumed).ToArray(), signedData, SignatureMetadata(signedData), trustRoots);
             signature = signature with { CoversWholeDocument = coversWholeDocument, Verified = signature.Verified && coversWholeDocument };
             verifiedRanges.Add(range, signature);
             signatures.Add(signature);
@@ -70,7 +74,7 @@ public static partial class PdfSignatures
         return new(signatures) { ModifiedAfterLastSignature = lastSignedEnd != pdf.Length };
     }
 
-    private static PdfSignatureInfo Verify(byte[] encoded, byte[] signedData, PdfSignatureMetadata metadata)
+    private static PdfSignatureInfo Verify(byte[] encoded, byte[] signedData, PdfSignatureMetadata metadata, X509Certificate2Collection? trustRoots)
     {
         var cms = new SignedCms(new ContentInfo(signedData), true);
         cms.Decode(encoded);
@@ -80,42 +84,33 @@ public static partial class PdfSignatures
 
         if (cms.SignerInfos.Count == 0) throw new InvalidDataException("PDF signature has no signer");
         var signer = cms.SignerInfos[0].Certificate ?? throw new InvalidDataException("PDF signer certificate is missing");
-        var certificates = SortCertificates(cms.Certificates, signer);
-        var now = DateTime.UtcNow;
-        var expired = certificates.Any(certificate => certificate.NotAfter.ToUniversalTime() < now || certificate.NotBefore.ToUniversalTime() > now);
-        var authenticity = certificates.Count > 1 && IsTrusted(signer, certificates);
-        var details = certificates.Select((certificate, index) => CertificateDetails(certificate, index == 0)).ToArray();
-        return new(integrity && authenticity && !expired, authenticity, integrity, expired, new(details, metadata));
-    }
-
-    private static bool IsTrusted(X509Certificate2 signer, IReadOnlyList<X509Certificate2> certificates)
-    {
-        using var chain = new X509Chain();
-        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-        chain.ChainPolicy.VerificationFlags = X509VerificationFlags.IgnoreNotTimeValid;
-        foreach (var certificate in certificates.Skip(1)) chain.ChainPolicy.ExtraStore.Add(certificate);
-        return chain.Build(signer);
-    }
-
-    private static List<X509Certificate2> SortCertificates(X509Certificate2Collection source, X509Certificate2 signer)
-    {
-        var remaining = source.Cast<X509Certificate2>().ToList();
-        var rootIndex = remaining.FindIndex(certificate => !remaining.Any(other => !ReferenceEquals(other, certificate) && StringComparer.OrdinalIgnoreCase.Equals(certificate.Issuer, other.Subject)));
-        if (rootIndex < 0) rootIndex = remaining.FindIndex(certificate => certificate.RawData.AsSpan().SequenceEqual(signer.RawData));
-        var sorted = new List<X509Certificate2> { remaining[rootIndex] };
-        remaining.RemoveAt(rootIndex);
-        while (remaining.Count > 0)
+        using var chain = CreateLocalChain(trustRoots);
+        chain.ChainPolicy.ExtraStore.AddRange(cms.Certificates);
+        bool verifiedChain = chain.Build(signer);
+        var flags = chain.ChainStatus.Aggregate(X509ChainStatusFlags.NoError, (all, status) => all | status.Status);
+        const X509ChainStatusFlags unavailable = X509ChainStatusFlags.RevocationStatusUnknown | X509ChainStatusFlags.OfflineRevocation;
+        bool expired = flags.HasFlag(X509ChainStatusFlags.NotTimeValid);
+        bool authenticity = (flags & ~(unavailable | X509ChainStatusFlags.NotTimeValid)) == 0;
+        string revocation = flags.HasFlag(X509ChainStatusFlags.Revoked) ? "revoked"
+            : (flags & unavailable) != 0 || !verifiedChain || chain.ChainElements.Count <= 1 ? "unknown" : "good";
+        var details = chain.ChainElements.Select((element, index) => CertificateDetails(element.Certificate, index == 0)).ToArray();
+        return new(integrity && verifiedChain && revocation == "good", authenticity, integrity, expired, new(details, metadata))
         {
-            var next = remaining.FindIndex(certificate => StringComparer.OrdinalIgnoreCase.Equals(certificate.Issuer, sorted[0].Subject));
-            if (next < 0)
-            {
-                remaining.RemoveAt(remaining.Count - 1);
-                continue;
-            }
-            sorted.Insert(0, remaining[next]);
-            remaining.RemoveAt(next);
+            RevocationStatus = revocation,
+        };
+    }
+
+    internal static X509Chain CreateLocalChain(X509Certificate2Collection? trustRoots)
+    {
+        var chain = new X509Chain();
+        chain.ChainPolicy.DisableCertificateDownloads = true;
+        chain.ChainPolicy.RevocationMode = X509RevocationMode.Offline;
+        if (trustRoots is not null)
+        {
+            chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+            chain.ChainPolicy.CustomTrustStore.AddRange(trustRoots);
         }
-        return sorted;
+        return chain;
     }
 
     private static PdfCertificateDetails CertificateDetails(X509Certificate2 certificate, bool clientCertificate) => new(
@@ -131,7 +126,8 @@ public static partial class PdfSignatures
             .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
             .Select(value => value.Split('=', 2))
             .Where(value => value.Length == 2)
-            .ToDictionary(value => value[0].Trim(), value => value[1].Trim(), StringComparer.OrdinalIgnoreCase);
+            .GroupBy(value => value[0].Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => string.Join(", ", group.Select(value => value[1].Trim())), StringComparer.OrdinalIgnoreCase);
         string? Value(string key) => values.TryGetValue(key, out var value) ? value : null;
         return new(Value("CN") ?? "", Value("OU"), Value("O"), Value("C"), Value("L"), Value("S") ?? Value("ST"), Value("SERIALNUMBER"));
     }
@@ -172,6 +168,7 @@ public sealed record PdfSignatureResult(IReadOnlyList<PdfSignatureInfo> Signatur
 public sealed record PdfSignatureInfo(bool Verified, bool Authenticity, bool Integrity, bool Expired, PdfSignatureMeta Meta)
 {
     public bool CoversWholeDocument { get; init; }
+    public string RevocationStatus { get; init; } = "unknown";
 }
 public sealed record PdfSignatureMeta(IReadOnlyList<PdfCertificateDetails> Certs, PdfSignatureMetadata SignatureMeta);
 public sealed record PdfSignatureMetadata(string? Reason, string? ContactInfo, string? Location, string? Name);
